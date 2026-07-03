@@ -1,0 +1,25 @@
+# CMake Build directory
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Syzygy Tablebases (Massive files, do NOT commit to Git!)
+syzygy/
+*.rtbw
+*.rtbz
+
+# Python cache / virtual envs / scripts
+__pycache__/
+*.pyc
+.venv/
+venv/
+download_syzygy.py
+setup.py
+sygzygy/
