@@ -18,6 +18,14 @@ set(SOURCES
     src/tt.cpp
     src/zobrist.cpp
     src/uci.cpp
+    src/nnue.cpp
+    src/misc.cpp
 )
 
 add_executable(BlunderBot ${SOURCES})
+
+# Copy the NNUE file to the build directory so the engine can find it
+add_custom_command(TARGET BlunderBot POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/nn-62ef826d1a6d.nnue"
+        $<TARGET_FILE_DIR:BlunderBot>)

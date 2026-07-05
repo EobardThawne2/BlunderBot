@@ -4,6 +4,7 @@
 #include "search.h"
 #include "tt.h"
 #include "uci.h"
+#include "nnue.h"
 #include <iostream>
 #include <string>
 
@@ -89,6 +90,7 @@ int main(int argc, char* argv[]) {
 
     init_all();
     TT.resize(32);
+    nnue_init("nn-62ef826d1a6d.nnue");
     
     if (argc > 1) {
         std::string arg = argv[1];
