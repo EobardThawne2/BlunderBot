@@ -66,6 +66,18 @@ void parse_go(Board& board, std::istringstream& ss) {
     std::cout << "bestmove " << best.to_string() << std::endl;
 }
 
+#ifdef _WIN32
+#include <windows.h>
+int get_hardware_concurrency() {
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return sysinfo.dwNumberOfProcessors;
+}
+int num_threads = get_hardware_concurrency();
+#else
+int num_threads = 1;
+#endif
+
 void uci_loop() {
     Board board;
     board.parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -73,8 +85,9 @@ void uci_loop() {
     std::string line;
     
     // Some GUIs expect the first output immediately
-    std::cout << "id name Antigravity Engine" << std::endl;
+    std::cout << "id name BlunderBot" << std::endl;
     std::cout << "id author DeepMind" << std::endl;
+    std::cout << "option name Threads type spin default " << num_threads << " min 1 max 128" << std::endl;
     std::cout << "uciok" << std::endl;
 
     while (std::getline(std::cin, line)) {
@@ -83,9 +96,17 @@ void uci_loop() {
         ss >> token;
 
         if (token == "uci") {
-            std::cout << "id name Antigravity Engine" << std::endl;
+            std::cout << "id name BlunderBot" << std::endl;
             std::cout << "id author DeepMind" << std::endl;
+            std::cout << "option name Threads type spin default " << num_threads << " min 1 max 128" << std::endl;
             std::cout << "uciok" << std::endl;
+        } else if (token == "setoption") {
+            std::string name_token, option_name, value_token;
+            int option_value;
+            ss >> name_token >> option_name >> value_token >> option_value;
+            if (name_token == "name" && option_name == "Threads" && value_token == "value") {
+                if (option_value >= 1) num_threads = option_value;
+            }
         } else if (token == "isready") {
             std::cout << "readyok" << std::endl;
         } else if (token == "ucinewgame") {
@@ -95,7 +116,7 @@ void uci_loop() {
         } else if (token == "go") {
             parse_go(board, ss);
         } else if (token == "stop") {
-            info.stopped = true;
+            global_stop = true;
         } else if (token == "quit") {
             break;
         } else if (token == "d") {

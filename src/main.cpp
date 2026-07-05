@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::cout << "Antigravity Engine - Type 'uci' for UCI mode or 'tui' for Terminal UI mode.\n";
+    std::cout << "BlunderBot - Type 'uci' for UCI mode or 'tui' for Terminal UI mode.\n";
     std::string line;
     if (std::getline(std::cin, line)) {
         if (line == "tui" || line == "play") {

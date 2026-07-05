@@ -4,8 +4,12 @@
 #include "tt.h"
 #include <iostream>
 #include <algorithm>
+#include <thread>
+#include <vector>
 
-SearchInfo info;
+std::atomic<bool> global_stop{false};
+thread_local SearchInfo info;
+extern int num_threads; // Defined in uci.cpp
 
 void clear_heuristics() {
     for (int i = 0; i < 64; i++) {
@@ -39,7 +43,7 @@ long long get_time_ms() {
 void check_time() {
     if (info.time_limit > 0 && (info.nodes & 2047) == 0) {
         if (get_time_ms() - info.start_time > info.time_limit) {
-            info.stopped = true;
+            global_stop = true;
         }
     }
 }
@@ -94,7 +98,7 @@ void sort_moves(Board& board, std::vector<Move>& moves, Move hash_move, int dept
 
 int quiescence(Board& board, int alpha, int beta) {
     check_time();
-    if (info.stopped) return 0;
+    if (global_stop) return 0;
     info.nodes++;
 
     int stand_pat = evaluate(board);
@@ -126,7 +130,7 @@ int quiescence(Board& board, int alpha, int beta) {
 
 int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) {
     check_time();
-    if (info.stopped) return 0;
+    if (global_stop) return 0;
     info.nodes++;
 
     if (depth == 0) return quiescence(board, alpha, beta);
@@ -162,7 +166,7 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
             int R = (depth > 6) ? 3 : 2;
             int null_score = -negamax(board, depth - 1 - R, -beta, -beta + 1, true);
             board.unmake_null_move();
-            if (info.stopped) return 0;
+            if (global_stop) return 0;
             if (null_score >= beta) return beta;
         }
     }
@@ -209,7 +213,7 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
 
         moves_searched++;
 
-        if (info.stopped) return 0;
+        if (global_stop) return 0;
 
         if (score > best_score) {
             best_score = score;
@@ -236,14 +240,11 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
     return best_score;
 }
 
-Move search(Board& board, int depth_limit, long long time_limit_ms) {
+Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool is_main_thread) {
     info.nodes = 0;
-    info.stopped = false;
     info.start_time = get_time_ms();
     info.time_limit = time_limit_ms;
     
-    // clear_heuristics(); // Actually, keeping history between searches is good! Let's only clear killer moves or decay history. 
-    // Wait, let's just clear everything for now to be safe and avoid overflow.
     clear_heuristics();
 
     Move best_move_overall;
@@ -279,7 +280,7 @@ Move search(Board& board, int depth_limit, long long time_limit_ms) {
                 int score = -negamax(board, depth - 1, -beta, -alpha);
                 board.unmake_move(m);
 
-                if (info.stopped) break;
+                if (global_stop) break;
 
                 if (score > best_score) {
                     best_score = score;
@@ -290,7 +291,7 @@ Move search(Board& board, int depth_limit, long long time_limit_ms) {
                 }
             }
             
-            if (info.stopped) break;
+            if (global_stop) break;
             
             // Handle Aspiration Window Failures
             if (best_score <= current_alpha) {
@@ -305,15 +306,70 @@ Move search(Board& board, int depth_limit, long long time_limit_ms) {
             }
         }
         
-        if (info.stopped) break;
+        if (global_stop) break;
         
         previous_score = best_score;
         best_move_overall = best_move_current;
-        extern bool is_tui;
-        if (!is_tui) {
-            std::cout << "info depth " << depth << " score cp " << best_score 
-                      << " nodes " << info.nodes << " pv " << best_move_overall.to_string() << "\n";
+        
+        if (is_main_thread) {
+            extern bool is_tui;
+            if (!is_tui) {
+                std::cout << "info depth " << depth << " score cp " << best_score 
+                          << " nodes " << info.nodes << " pv " << best_move_overall.to_string() << "\n";
+            }
         }
     }
     return best_move_overall;
+}
+
+#ifdef _WIN32
+#include <windows.h>
+struct ThreadArgs {
+    Board board;
+    int depth_limit;
+    long long time_limit_ms;
+};
+DWORD WINAPI search_worker_wrapper(LPVOID lpParam) {
+    ThreadArgs* args = (ThreadArgs*)lpParam;
+    search_worker(args->board, args->depth_limit, args->time_limit_ms, false);
+    delete args;
+    return 0;
+}
+#endif
+
+Move search(Board board, int depth_limit, long long time_limit_ms) {
+    global_stop = false;
+    
+    int active_threads = num_threads > 0 ? num_threads : 1;
+    
+#ifdef _WIN32
+    std::vector<HANDLE> workers;
+    // Spawn helper threads (Lazy SMP)
+    for (int i = 1; i < active_threads; i++) {
+        ThreadArgs* args = new ThreadArgs{board, depth_limit, time_limit_ms};
+        HANDLE hThread = CreateThread(NULL, 0, search_worker_wrapper, args, 0, NULL);
+        if (hThread) {
+            workers.push_back(hThread);
+        } else {
+            delete args;
+        }
+    }
+#endif
+    
+    // Main thread does the exact same search, but prints UCI info
+    Move best = search_worker(board, depth_limit, time_limit_ms, true);
+    
+    // Stop all background threads once the main thread finishes
+    global_stop = true;
+    
+#ifdef _WIN32
+    if (!workers.empty()) {
+        WaitForMultipleObjects(workers.size(), workers.data(), TRUE, INFINITE);
+        for (HANDLE h : workers) {
+            CloseHandle(h);
+        }
+    }
+#endif
+    
+    return best;
 }

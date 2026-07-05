@@ -3,9 +3,12 @@
 #include "move.h"
 #include <chrono>
 
+#include <atomic>
+
+extern std::atomic<bool> global_stop;
+
 struct SearchInfo {
     int nodes;
-    bool stopped;
     long long start_time;
     long long time_limit;
 
@@ -13,7 +16,4 @@ struct SearchInfo {
     int history_table[2][64][64]; // [color][from][to]
 };
 
-extern SearchInfo info;
-
-void clear_heuristics();
-Move search(Board& board, int depth_limit, long long time_limit_ms);
+Move search(Board board, int depth_limit, long long time_limit_ms);
