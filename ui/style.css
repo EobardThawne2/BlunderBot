@@ -1,0 +1,308 @@
+:root {
+    --bg-color: #161512;
+    --panel-bg: #262421;
+    --text-primary: #bababa;
+    --text-light: #ffffff;
+    --text-muted: #858585;
+    --accent: #629924; /* Chess.com-esque subtle green for moves */
+    --accent-hover: #73b32a;
+    
+    /* Evaluation bar */
+    --eval-white: #ffffff;
+    --eval-black: #403d39;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 950px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.header {
+    text-align: center;
+}
+
+.header h1 {
+    margin: 0;
+    font-weight: 500;
+    font-size: 24px;
+    color: var(--text-light);
+    letter-spacing: 0.5px;
+}
+
+.main-content {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+/* Play Area */
+.play-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+}
+
+/* Player Plates */
+.player-plate {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 5px 0;
+}
+
+.player-icon {
+    font-size: 24px;
+    background: var(--panel-bg);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.player-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.player-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.player-rating {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Board + Eval Bar Layout */
+.board-eval-group {
+    display: flex;
+    gap: 15px;
+    align-items: stretch;
+}
+
+.board-wrapper {
+    flex: 1;
+}
+
+/* Vertical Eval Bar */
+.vertical-eval-wrapper {
+    width: 16px;
+    background-color: var(--eval-black);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.vertical-eval-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%; /* 50% means 0.00 score */
+    background-color: var(--eval-white);
+    transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vertical-eval-score {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted); /* Color flips dynamically in JS based on score */
+    z-index: 2;
+    transform: rotate(-90deg);
+}
+
+/* Controls */
+.controls {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+button {
+    background-color: var(--panel-bg);
+    color: var(--text-light);
+    border: none;
+    padding: 12px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    flex: 1;
+}
+
+button:hover {
+    background-color: #33312c;
+}
+
+/* HUD / Stats Panel */
+.hud {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    padding-top: 45px; /* align with board */
+}
+
+.hud-header {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-light);
+    border-bottom: 1px solid var(--panel-bg);
+    padding-bottom: 10px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 10px;
+}
+
+.stat-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    color: var(--text-light);
+}
+
+/* Console */
+.console {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.console-header {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.console-output {
+    background-color: var(--panel-bg);
+    border-radius: 6px;
+    padding: 12px;
+    height: 180px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+/* Custom Scrollbar */
+.console-output::-webkit-scrollbar {
+    width: 6px;
+}
+.console-output::-webkit-scrollbar-track {
+    background: transparent;
+}
+.console-output::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 3px;
+}
+
+.console-line {
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+/* Overriding chessboard.js default colors */
+.white-1e1d7 { background-color: #ebecd0; color: #739552; }
+.black-3c85d { background-color: #739552; color: #ebecd0; }
+
+/* King in check red glow */
+.square-in-check {
+    background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0) 70%) !important;
+}
+
+/* Selected square highlight */
+.square-selected {
+    background-color: rgba(20, 85, 30, 0.5) !important;
+}
+
+/* Legal Move Indicators (Dots and Capture Rings) */
+.legal-move-indicator {
+    position: relative;
+}
+.legal-move-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 26%;
+    height: 26%;
+    background-color: rgba(0, 0, 0, 0.25);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.legal-capture-indicator {
+    position: relative;
+}
+.legal-capture-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80%;
+    height: 80%;
+    border: 5px solid rgba(0, 0, 0, 0.25);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 2;
+    box-sizing: border-box;
+}
