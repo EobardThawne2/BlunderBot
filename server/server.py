@@ -11,7 +11,7 @@ app = FastAPI()
 # Store connected websockets
 clients = set()
 
-engine_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'BlunderBot.exe')
+engine_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'build', 'BlunderBot.exe' if os.name == 'nt' else 'BlunderBot')
 engine_process = None
 engine_output_queue = asyncio.Queue()
 loop = None
