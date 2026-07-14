@@ -8,7 +8,8 @@ const consoleOutputEl = document.getElementById('console-output');
 
 let board = null;
 let game = new Chess();
-let ws = new WebSocket(`ws://${window.location.host}/ws`);
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+let ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
 let selectedSquare = null;
 
 // WebSocket Connection
