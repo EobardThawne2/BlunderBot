@@ -42,7 +42,7 @@ jobs:
             echo "Error: BlunderBot.exe not found!"
             exit 1
           fi
-          zip -r BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue
+          7z a BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue
         else
           if [ ! -f "BlunderBot" ]; then
             echo "Error: BlunderBot not found!"
