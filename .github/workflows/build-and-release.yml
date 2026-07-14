@@ -32,7 +32,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
       run: |
-        cd ${{github.workspace}}/build
+        cd build
         cp ../nn-62ef826d1a6d.nnue .
         if [ "$RUNNER_OS" == "Windows" ]; then
           if [ -f "Release/BlunderBot.exe" ]; then
