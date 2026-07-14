@@ -31,15 +31,23 @@ jobs:
     - name: Package Release
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
+      working-directory: build
       run: |
-        cd build
         cp ../nn-62ef826d1a6d.nnue .
         if [ "$RUNNER_OS" == "Windows" ]; then
           if [ -f "Release/BlunderBot.exe" ]; then
             cp Release/BlunderBot.exe .
           fi
-          7z a BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue
+          if [ ! -f "BlunderBot.exe" ]; then
+            echo "Error: BlunderBot.exe not found!"
+            exit 1
+          fi
+          zip -r BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue
         else
+          if [ ! -f "BlunderBot" ]; then
+            echo "Error: BlunderBot not found!"
+            exit 1
+          fi
           zip -r BlunderBot-${{ matrix.os }}.zip BlunderBot nn-62ef826d1a6d.nnue
         fi
 
@@ -47,4 +55,5 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/v')
       with:
-        files: ${{github.workspace}}/build/BlunderBot-${{ matrix.os }}.zip
+        files: build/BlunderBot-${{ matrix.os }}.zip
+        fail_on_unmatched_files: true
