@@ -34,7 +34,8 @@ jobs:
       run: |
         cd ${{github.workspace}}/build
         if [ "$RUNNER_OS" == "Windows" ]; then
-          7z a BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue
+          cd Release
+          7z a ../BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue
         else
           zip -r BlunderBot-${{ matrix.os }}.zip BlunderBot nn-62ef826d1a6d.nnue
         fi
