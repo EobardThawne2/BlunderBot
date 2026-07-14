@@ -12,7 +12,6 @@ A lightweight, high-performance C++ chess engine built from scratch.
 - **Evaluation Engine:** 
   - NNUE (Efficiently Updatable Neural Networks) integration for state-of-the-art position evaluation.
   - Tapered Piece-Square Tables (PSTs) fallback for middlegame and endgame.
-- **Endgame Tablebases:** Syzygy Tablebase support for perfect endgame play (up to 5 pieces).
 - **Protocols:** Full support for the Universal Chess Interface (UCI) protocol, compatible with major chess GUIs (Arena, Cute Chess, etc.).
 - **User Interfaces:**
   - Built-in Terminal User Interface (TUI) with an interactive colored board.
@@ -23,7 +22,6 @@ A lightweight, high-performance C++ chess engine built from scratch.
 - `src/` - Core C++ Engine source code.
 - `server/` - Python FastAPI server that acts as a bridge between the Web UI and the engine.
 - `ui/` - Frontend HTML/JS/CSS for playing against the engine directly in your web browser.
-- `syzygy/` - Contains Syzygy endgame tablebase files.
 - `Dockerfile` - For easy containerized deployment of the web server.
 
 ## Requirements
@@ -83,5 +81,3 @@ uvicorn server.server:app --host 127.0.0.1 --port 8000
 ```
 Then visit `http://127.0.0.1:8000`.
 
-## Tablebases
-The engine supports Syzygy tablebase files (`.rtbw` / `.rtbz`) to play perfectly in endgames. You can download missing ones using the provided `download_syzygy.py` script and ensure they reside in the `syzygy/` directory.
