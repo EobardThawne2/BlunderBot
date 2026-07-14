@@ -31,6 +31,15 @@ A lightweight, high-performance C++ chess engine built from scratch.
 - **Python:** 3.10+ (optional, for running the Web UI server).
 - **Docker:** (optional, for containerized deployments).
 
+## Download (Pre-built Binaries)
+
+The easiest way to get started is to download a pre-compiled version of BlunderBot for your operating system.
+
+1. Go to the [Releases page](https://github.com/EobardThawne2/BlunderBot/releases/latest).
+2. Download the appropriate `.zip` file for your platform (`windows`, `ubuntu`, or `macos`).
+3. Extract the `.zip` file.
+4. Open your terminal or command prompt, navigate to the extracted folder, and run the engine (see [Running the Engine](#running-the-engine) below).
+
 ## Build Instructions
 
 ### Local C++ Build
