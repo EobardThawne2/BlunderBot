@@ -100,12 +100,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 # Mount static files at root
+ui_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui')
 app.mount(
     "/",
-    StaticFiles(
-        directory=os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui'),
-        html=True
-    ),
+    StaticFiles(directory=ui_dir, html=True),
     name="ui"
 )
 

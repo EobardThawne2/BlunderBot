@@ -2,6 +2,10 @@
 #include <cstdint>
 #include <iostream>
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
 namespace Utils {
     inline void set_bit(uint64_t& bb, int square) {
         bb |= (1ULL << square);
@@ -17,11 +21,21 @@ namespace Utils {
 
     inline int get_lsb_index(uint64_t bb) {
         if (bb == 0) return -1;
+#if defined(_MSC_VER)
+        unsigned long index;
+        _BitScanForward64(&index, bb);
+        return static_cast<int>(index);
+#else
         return __builtin_ctzll(bb); // More efficient way using compiler intrinsics
+#endif
     }
 
     inline int count_bits(uint64_t bb) {
+#if defined(_MSC_VER)
+        return static_cast<int>(__popcnt64(bb));
+#else
         return __builtin_popcountll(bb);
+#endif
     }
 
 
