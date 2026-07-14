@@ -108,8 +108,7 @@ int main(int argc, char* argv[]) {
         } else {
             // Pre-feed the line to UCI loop if it was "uci", or just run it anyway
             if (line == "uci") {
-                std::cout << "id name Antigravity Engine\n";
-                std::cout << "id author DeepMind\n";
+                std::cout << "id name BlunderBot\n";
                 std::cout << "uciok\n";
             }
             uci_loop();

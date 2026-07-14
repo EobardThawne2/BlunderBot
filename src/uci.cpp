@@ -86,7 +86,6 @@ void uci_loop() {
     
     // Some GUIs expect the first output immediately
     std::cout << "id name BlunderBot" << std::endl;
-    std::cout << "id author DeepMind" << std::endl;
     std::cout << "option name Threads type spin default " << num_threads << " min 1 max 128" << std::endl;
     std::cout << "uciok" << std::endl;
 
@@ -97,7 +96,6 @@ void uci_loop() {
 
         if (token == "uci") {
             std::cout << "id name BlunderBot" << std::endl;
-            std::cout << "id author DeepMind" << std::endl;
             std::cout << "option name Threads type spin default " << num_threads << " min 1 max 128" << std::endl;
             std::cout << "uciok" << std::endl;
         } else if (token == "setoption") {
