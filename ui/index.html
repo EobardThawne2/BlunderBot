@@ -10,7 +10,7 @@
     <!-- Google Fonts for sleek typography -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -37,6 +37,17 @@
                 </div>
                 <div class="board-wrapper">
                     <div id="board" style="width: 100%"></div>
+                    <!-- Game Over Overlay -->
+                    <div id="game-over-overlay" class="game-over-overlay hidden">
+                        <div id="game-over-title">Checkmate</div>
+                        <div id="game-over-subtitle">White wins</div>
+                    </div>
+                    <!-- Promotion Modal -->
+                    <div id="promotion-modal" class="promotion-modal hidden">
+                        <div class="promotion-pieces" id="promotion-pieces-container">
+                            <!-- Pieces injected via JS based on color -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -91,6 +102,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 
 <!-- App Logic -->
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ let game = new Chess();
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 let ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
 let selectedSquare = null;
+let pendingPromotionMove = null;
 
 // WebSocket Connection
 ws.onopen = () => {
@@ -72,6 +73,11 @@ function onDrop (source, target) {
     removeHighlights();
     selectedSquare = null;
 
+    if (isPromotion(source, target)) {
+        showPromotionModal(source, target, game.get(source).color);
+        return; // pawn visually stays at target until selection
+    }
+
     let move = game.move({
         from: source,
         to: target,
@@ -106,6 +112,13 @@ $(document).on('click', '#board .square-55d63', function() {
         }
 
         // Try to move
+        if (isPromotion(selectedSquare, sq)) {
+            showPromotionModal(selectedSquare, sq, game.get(selectedSquare).color);
+            removeHighlights();
+            selectedSquare = null;
+            return;
+        }
+
         let move = game.move({
             from: selectedSquare,
             to: sq,
@@ -143,6 +156,59 @@ function findKing(color) {
     return null;
 }
 
+function isPromotion(source, target) {
+    let piece = game.get(source);
+    if (!piece || piece.type !== 'p') return false;
+    
+    let rank = target.charAt(1);
+    if ((piece.color === 'w' && rank === '8') || (piece.color === 'b' && rank === '1')) {
+        let moves = game.moves({verbose: true});
+        return moves.some(m => m.from === source && m.to === target && m.promotion);
+    }
+    return false;
+}
+
+function showPromotionModal(source, target, color) {
+    pendingPromotionMove = { source, target };
+    const container = document.getElementById('promotion-pieces-container');
+    container.innerHTML = '';
+    
+    const pieces = ['q', 'r', 'b', 'n'];
+    pieces.forEach(p => {
+        const img = document.createElement('img');
+        img.src = `https://chessboardjs.com/img/chesspieces/wikipedia/${color}${p}.png`;
+        img.className = 'promo-piece';
+        img.dataset.piece = p;
+        img.addEventListener('click', () => {
+            executePromotion(p);
+        });
+        container.appendChild(img);
+    });
+    
+    document.getElementById('promotion-modal').classList.remove('hidden');
+}
+
+function executePromotion(promoPiece) {
+    document.getElementById('promotion-modal').classList.add('hidden');
+    if (!pendingPromotionMove) return;
+    
+    let move = game.move({
+        from: pendingPromotionMove.source,
+        to: pendingPromotionMove.target,
+        promotion: promoPiece
+    });
+    
+    pendingPromotionMove = null;
+    
+    if (move !== null) {
+        board.position(game.fen());
+        updateStatus();
+        requestEngineMove();
+    } else {
+        board.position(game.fen());
+    }
+}
+
 function updateStatus () {
     let status = '';
     let moveColor = game.turn() === 'b' ? 'Black' : 'White';
@@ -151,13 +217,33 @@ function updateStatus () {
     // Remove all highlights first
     $('#board .square-55d63').removeClass('square-in-check');
 
+    const overlay = document.getElementById('game-over-overlay');
+    const overlayTitle = document.getElementById('game-over-title');
+    const overlaySubtitle = document.getElementById('game-over-subtitle');
+
     if (game.in_checkmate()) {
         status = 'Game over, ' + moveColor + ' is in checkmate.';
         let kingSq = findKing(turnChar);
         if (kingSq) $('#board .square-' + kingSq).addClass('square-in-check');
+        
+        if (overlay) {
+            let winner = moveColor === 'White' ? 'Black' : 'White';
+            overlayTitle.textContent = "Checkmate";
+            overlaySubtitle.textContent = winner + " wins";
+            overlay.classList.remove('hidden');
+        }
     } else if (game.in_draw()) {
         status = 'Game over, drawn position';
+        if (overlay) {
+            overlayTitle.textContent = "Draw";
+            if (game.in_stalemate()) overlaySubtitle.textContent = "Stalemate";
+            else if (game.in_threefold_repetition()) overlaySubtitle.textContent = "Repetition";
+            else if (game.insufficient_material()) overlaySubtitle.textContent = "Insufficient Material";
+            else overlaySubtitle.textContent = "50-Move Rule";
+            overlay.classList.remove('hidden');
+        }
     } else {
+        if (overlay) overlay.classList.add('hidden');
         status = moveColor + ' to move';
         if (game.in_check()) {
             status += ', ' + moveColor + ' is in check';

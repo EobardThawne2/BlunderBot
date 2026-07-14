@@ -107,6 +107,87 @@ body {
 
 .board-wrapper {
     flex: 1;
+    position: relative;
+}
+
+/* Game Over Overlay */
+.game-over-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    transition: opacity 0.3s ease;
+    border-radius: 3px;
+}
+
+.game-over-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#game-over-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+#game-over-subtitle {
+    font-size: 18px;
+    font-weight: 500;
+    color: #e0e0e0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Promotion Modal */
+.promotion-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    transition: opacity 0.2s ease;
+    border-radius: 3px;
+}
+
+.promotion-modal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.promotion-pieces {
+    background-color: #f1f1f1;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.promo-piece {
+    width: 60px;
+    height: 60px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.promo-piece:hover {
+    background-color: #d1d1d1;
+    transform: scale(1.05);
 }
 
 /* Vertical Eval Bar */
