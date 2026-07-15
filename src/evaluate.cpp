@@ -25,7 +25,7 @@ int get_nnue_piece(int piece, int color) {
     return 0;
 }
 
-int evaluate(const Board& board) {
+int evaluate(const Board &board) {
     int pieces[33];
     int squares[33];
     int idx = 2; // 0 and 1 are reserved for the kings
@@ -36,9 +36,9 @@ int evaluate(const Board& board) {
             while (bb) {
                 int sq = Utils::get_lsb_index(bb);
                 Utils::clear_bit(bb, sq);
-                
+
                 int nnue_p = get_nnue_piece(p, col);
-                
+
                 if (p == KING) {
                     if (col == WHITE) {
                         pieces[0] = nnue_p;
@@ -63,10 +63,10 @@ int evaluate(const Board& board) {
     // nnue_evaluate returns the score relative to the side to move.
     // Our search expects score relative to the side to move as well!
     int score = nnue_evaluate(board.side_to_move, pieces, squares);
-    
+
     // Prevent the score from exceeding mate bounds
     if (score > 30000) score = 30000;
     if (score < -30000) score = -30000;
-    
+
     return score;
 }

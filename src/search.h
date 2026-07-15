@@ -12,7 +12,7 @@ struct SearchInfo {
     long long start_time;
     long long time_limit;
 
-    Move killer_moves[64][2]; // [depth][slot]
+    Move killer_moves[64][2];     // [depth][slot]
     int history_table[2][64][64]; // [color][from][to]
 };
 

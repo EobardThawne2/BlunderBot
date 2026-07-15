@@ -11,4 +11,4 @@ extern uint64_t zobrist_castling[16];
 extern uint64_t zobrist_en_passant[64];
 
 void init_zobrist();
-uint64_t generate_hash(const Board& board);
+uint64_t generate_hash(const Board &board);

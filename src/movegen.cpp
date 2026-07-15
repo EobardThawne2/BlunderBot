@@ -2,7 +2,7 @@
 #include "magic.h"
 #include "utils.h"
 
-std::vector<Move> MoveGen::generate_pseudo_legal_moves(const Board& board) {
+std::vector<Move> MoveGen::generate_pseudo_legal_moves(const Board &board) {
     std::vector<Move> moves;
     moves.reserve(256);
     Color us = board.side_to_move;
@@ -159,7 +159,7 @@ std::vector<Move> MoveGen::generate_pseudo_legal_moves(const Board& board) {
     return moves;
 }
 
-std::vector<Move> MoveGen::generate_legal_moves(Board& board) {
+std::vector<Move> MoveGen::generate_legal_moves(Board &board) {
     std::vector<Move> pseudo = generate_pseudo_legal_moves(board);
     std::vector<Move> legal;
     legal.reserve(pseudo.size());
@@ -167,15 +167,13 @@ std::vector<Move> MoveGen::generate_legal_moves(Board& board) {
     for (Move m : pseudo) {
         board.make_move(m);
         Color us = board.side_to_move == WHITE ? BLACK : WHITE; // we just moved
-        if (!board.in_check(us)) {
-            legal.push_back(m);
-        }
+        if (!board.in_check(us)) { legal.push_back(m); }
         board.unmake_move(m);
     }
     return legal;
 }
 
-uint64_t MoveGen::perft(Board& board, int depth) {
+uint64_t MoveGen::perft(Board &board, int depth) {
     if (depth == 0) return 1ULL;
 
     std::vector<Move> moves = generate_legal_moves(board);

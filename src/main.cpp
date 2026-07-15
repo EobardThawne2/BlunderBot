@@ -19,7 +19,7 @@ void tui_loop() {
     Board board;
     board.parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     std::string line;
-    
+
     std::cout << "\033[2J\033[H"; // Clear screen
     std::cout << "Welcome to BlunderBot TUI!\n";
     std::cout << "Commands: [move e.g. e2e4], 'd' (display), 'go' (force engine play), 'quit'.\n";
@@ -49,11 +49,11 @@ void tui_loop() {
                 break;
             }
         }
-        
+
         if (valid_move) {
             std::cout << "\033[2J\033[H";
             board.print_board_tui();
-            
+
             // Engine automatically responds if it's its turn
             std::cout << "Engine is thinking...\n";
             Move best_move = search(board, 64, 2000);
@@ -66,9 +66,7 @@ void tui_loop() {
                 board.print_board_tui();
             }
         } else {
-            if (!line.empty()) {
-                std::cout << "Unknown command or illegal move: " << line << "\n";
-            }
+            if (!line.empty()) { std::cout << "Unknown command or illegal move: " << line << "\n"; }
         }
     }
 }
@@ -77,7 +75,7 @@ void tui_loop() {
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -91,7 +89,7 @@ int main(int argc, char* argv[]) {
     init_all();
     TT.resize(32);
     nnue_init("nn-62ef826d1a6d.nnue");
-    
+
     if (argc > 1) {
         std::string arg = argv[1];
         if (arg == "tui" || arg == "play") {

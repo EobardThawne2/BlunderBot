@@ -17,9 +17,8 @@ struct Move {
     Move() : move(0) {}
     Move(uint32_t m) : move(m) {}
     Move(int from, int to, int promoted, bool capture, bool ep, bool castling, bool dp) {
-        move = (from & 0x3F) | ((to & 0x3F) << 6) | ((promoted & 0xF) << 12) |
-               (capture ? 0x10000 : 0) | (ep ? 0x20000 : 0) |
-               (castling ? 0x40000 : 0) | (dp ? 0x80000 : 0);
+        move = (from & 0x3F) | ((to & 0x3F) << 6) | ((promoted & 0xF) << 12) | (capture ? 0x10000 : 0) |
+               (ep ? 0x20000 : 0) | (castling ? 0x40000 : 0) | (dp ? 0x80000 : 0);
     }
 
     int from() const { return move & 0x3F; }
@@ -37,14 +36,18 @@ struct Move {
         s += (char)('a' + (to() % 8));
         s += (char)('1' + (to() / 8));
         if (promoted() != PIECE_NONE) {
-            if (promoted() == KNIGHT) s += 'n';
-            else if (promoted() == BISHOP) s += 'b';
-            else if (promoted() == ROOK) s += 'r';
-            else if (promoted() == QUEEN) s += 'q';
+            if (promoted() == KNIGHT)
+                s += 'n';
+            else if (promoted() == BISHOP)
+                s += 'b';
+            else if (promoted() == ROOK)
+                s += 'r';
+            else if (promoted() == QUEEN)
+                s += 'q';
         }
         return s;
     }
 
-    bool operator==(const Move& other) const { return move == other.move; }
-    bool operator!=(const Move& other) const { return move != other.move; }
+    bool operator==(const Move &other) const { return move == other.move; }
+    bool operator!=(const Move &other) const { return move != other.move; }
 };

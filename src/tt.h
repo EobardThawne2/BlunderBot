@@ -15,21 +15,21 @@ struct TTEntry {
 };
 
 class TranspositionTable {
-public:
+  public:
     TranspositionTable();
     ~TranspositionTable();
     void resize(int mb);
     void clear();
     void store(uint64_t key, int depth, int score, int flag, Move best_move);
-    bool probe(uint64_t key, int depth, int alpha, int beta, int& score, Move& best_move);
+    bool probe(uint64_t key, int depth, int alpha, int beta, int &score, Move &best_move);
 
-private:
-    TTEntry* table;
+  private:
+    TTEntry *table;
     uint64_t size_mask;
-    
+
     // Disable copy for table
-    TranspositionTable(const TranspositionTable&) = delete;
-    TranspositionTable& operator=(const TranspositionTable&) = delete;
+    TranspositionTable(const TranspositionTable &) = delete;
+    TranspositionTable &operator=(const TranspositionTable &) = delete;
 };
 
 extern TranspositionTable TT;

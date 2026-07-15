@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-void parse_position(Board& board, std::istringstream& ss) {
+void parse_position(Board &board, std::istringstream &ss) {
     std::string token;
     ss >> token;
 
@@ -37,18 +37,24 @@ void parse_position(Board& board, std::istringstream& ss) {
     }
 }
 
-void parse_go(Board& board, std::istringstream& ss) {
+void parse_go(Board &board, std::istringstream &ss) {
     std::string token;
     int depth = 64;
     long long wtime = 0, btime = 0, winc = 0, binc = 0, movetime = 0;
 
     while (ss >> token) {
-        if (token == "depth") ss >> depth;
-        else if (token == "wtime") ss >> wtime;
-        else if (token == "btime") ss >> btime;
-        else if (token == "winc") ss >> winc;
-        else if (token == "binc") ss >> binc;
-        else if (token == "movetime") ss >> movetime;
+        if (token == "depth")
+            ss >> depth;
+        else if (token == "wtime")
+            ss >> wtime;
+        else if (token == "btime")
+            ss >> btime;
+        else if (token == "winc")
+            ss >> winc;
+        else if (token == "binc")
+            ss >> binc;
+        else if (token == "movetime")
+            ss >> movetime;
     }
 
     long long time_limit = -1;
@@ -57,9 +63,7 @@ void parse_go(Board& board, std::istringstream& ss) {
     } else {
         long long time_left = (board.side_to_move == WHITE) ? wtime : btime;
         long long inc = (board.side_to_move == WHITE) ? winc : binc;
-        if (time_left > 0) {
-            time_limit = (time_left / 20) + (inc / 2);
-        }
+        if (time_left > 0) { time_limit = (time_left / 20) + (inc / 2); }
     }
 
     Move best = search(board, depth, time_limit);
@@ -69,13 +73,12 @@ void parse_go(Board& board, std::istringstream& ss) {
 #include <thread>
 int num_threads = std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1;
 
-
 void uci_loop() {
     Board board;
     board.parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    
+
     std::string line;
-    
+
     // Some GUIs expect the first output immediately
     std::cout << "id name BlunderBot" << std::endl;
     std::cout << "option name Threads type spin default " << num_threads << " min 1 max 128" << std::endl;

@@ -18,9 +18,7 @@ void clear_heuristics() {
     }
     for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 64; j++) {
-            for (int k = 0; k < 64; k++) {
-                info.history_table[i][j][k] = 0;
-            }
+            for (int k = 0; k < 64; k++) { info.history_table[i][j][k] = 0; }
         }
     }
 }
@@ -36,22 +34,18 @@ const int mvv_lva[6][6] = {
 };
 
 long long get_time_ms() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+        .count();
 }
 
 void check_time() {
     if (info.time_limit > 0 && (info.nodes & 2047) == 0) {
-        if (get_time_ms() - info.start_time > info.time_limit) {
-            global_stop = true;
-        }
+        if (get_time_ms() - info.start_time > info.time_limit) { global_stop = true; }
     }
 }
 
-int score_move(Board& board, Move m, Move hash_move, int depth) {
-    if (m.move == hash_move.move) {
-        return 1000000;
-    }
+int score_move(Board &board, Move m, Move hash_move, int depth) {
+    if (m.move == hash_move.move) { return 1000000; }
     if (m.is_capture()) {
         int attacker = PIECE_NONE;
         for (int p = PAWN; p <= KING; p++) {
@@ -67,12 +61,10 @@ int score_move(Board& board, Move m, Move hash_move, int depth) {
                 break;
             }
         }
-        if (attacker != PIECE_NONE && victim != PIECE_NONE) {
-            return 100000 + mvv_lva[attacker][victim];
-        }
+        if (attacker != PIECE_NONE && victim != PIECE_NONE) { return 100000 + mvv_lva[attacker][victim]; }
         return 100000;
     }
-    
+
     // Quiet moves: Killer and History heuristics
     if (depth >= 0 && depth < 64) {
         if (m.move == info.killer_moves[depth][0].move) return 90000;
@@ -81,11 +73,9 @@ int score_move(Board& board, Move m, Move hash_move, int depth) {
     return info.history_table[board.side_to_move][m.from()][m.to()];
 }
 
-void sort_moves(Board& board, std::vector<Move>& moves, Move hash_move, int depth) {
+void sort_moves(Board &board, std::vector<Move> &moves, Move hash_move, int depth) {
     std::vector<int> scores(moves.size());
-    for (size_t i = 0; i < moves.size(); i++) {
-        scores[i] = score_move(board, moves[i], hash_move, depth);
-    }
+    for (size_t i = 0; i < moves.size(); i++) { scores[i] = score_move(board, moves[i], hash_move, depth); }
     for (size_t i = 1; i < moves.size(); i++) {
         int j = i;
         while (j > 0 && scores[j - 1] < scores[j]) {
@@ -96,7 +86,7 @@ void sort_moves(Board& board, std::vector<Move>& moves, Move hash_move, int dept
     }
 }
 
-int quiescence(Board& board, int alpha, int beta) {
+int quiescence(Board &board, int alpha, int beta) {
     check_time();
     if (global_stop) return 0;
     info.nodes++;
@@ -128,7 +118,7 @@ int quiescence(Board& board, int alpha, int beta) {
     return alpha;
 }
 
-int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) {
+int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) {
     check_time();
     if (global_stop) return 0;
     info.nodes++;
@@ -138,9 +128,7 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
 
     int tt_score;
     Move hash_move;
-    if (TT.probe(board.hash_key, depth, alpha, beta, tt_score, hash_move)) {
-        return tt_score;
-    }
+    if (TT.probe(board.hash_key, depth, alpha, beta, tt_score, hash_move)) { return tt_score; }
 
     std::vector<Move> moves = MoveGen::generate_legal_moves(board);
     if (moves.empty()) {
@@ -150,7 +138,7 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
 
     bool in_check = board.in_check(board.side_to_move);
     int static_eval = evaluate(board);
-    
+
     // Reverse Futility Pruning (Static Null Move Pruning)
     if (depth <= 3 && !in_check && !is_null && abs(beta) < 40000) {
         int rfp_margin = 120 * depth;
@@ -177,25 +165,24 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
     int flag = TT_ALPHA;
     int best_score = -50000;
     Move best_move;
-    
+
     // Futility Pruning
     bool f_prune = false;
     if (depth <= 3 && !in_check && abs(alpha) < 40000) {
-        if (static_eval + 150 * depth <= alpha) {
-            f_prune = true;
-        }
+        if (static_eval + 150 * depth <= alpha) { f_prune = true; }
     }
 
     int moves_searched = 0;
     for (Move m : moves) {
         // Futility Pruning: skip quiet moves if we are far behind
-        if (f_prune && moves_searched > 0 && !m.is_capture() && m.promoted() == PIECE_NONE && !board.in_check(static_cast<Color>(1 - board.side_to_move))) {
+        if (f_prune && moves_searched > 0 && !m.is_capture() && m.promoted() == PIECE_NONE &&
+            !board.in_check(static_cast<Color>(1 - board.side_to_move))) {
             continue;
         }
 
         board.make_move(m);
         int score;
-        
+
         // Late Move Reductions (LMR)
         bool is_quiet = !m.is_capture() && m.promoted() == PIECE_NONE;
         if (depth >= 3 && moves_searched >= 3 && is_quiet && !in_check) {
@@ -209,7 +196,7 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
             // Normal PVS/Alpha-Beta search
             score = -negamax(board, depth - 1, -beta, -alpha);
         }
-        
+
         board.unmake_move(m);
 
         moves_searched++;
@@ -236,7 +223,7 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
             return beta;
         }
     }
-    
+
     TT.store(board.hash_key, depth, best_score, flag, best_move);
     return best_score;
 }
@@ -245,25 +232,25 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
     info.nodes = 0;
     info.start_time = get_time_ms();
     info.time_limit = time_limit_ms;
-    
+
     clear_heuristics();
 
     Move best_move_overall;
     int previous_score = 0;
-    
+
     for (int depth = 1; depth <= depth_limit; depth++) {
         int tt_score;
         Move hash_move;
         TT.probe(board.hash_key, depth, -50000, 50000, tt_score, hash_move);
-        
+
         std::vector<Move> moves = MoveGen::generate_legal_moves(board);
         if (moves.empty()) break;
-        
+
         sort_moves(board, moves, hash_move, depth);
 
         Move best_move_current = moves[0];
         int best_score = -50000;
-        
+
         // Aspiration Windows
         int alpha = -50000;
         int beta = 50000;
@@ -275,7 +262,7 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
         while (true) {
             best_score = -50000;
             int current_alpha = alpha; // Keep track of the starting alpha for fail-low checks
-            
+
             for (Move m : moves) {
                 board.make_move(m);
                 int score = -negamax(board, depth - 1, -beta, -alpha);
@@ -287,13 +274,11 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
                     best_score = score;
                     best_move_current = m;
                 }
-                if (score > alpha) {
-                    alpha = score;
-                }
+                if (score > alpha) { alpha = score; }
             }
-            
+
             if (global_stop) break;
-            
+
             // Handle Aspiration Window Failures
             if (best_score <= current_alpha) {
                 // Fail Low: the score was worse than expected, widen alpha
@@ -306,17 +291,17 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
                 break;
             }
         }
-        
+
         if (global_stop) break;
-        
+
         previous_score = best_score;
         best_move_overall = best_move_current;
-        
+
         if (is_main_thread) {
             extern bool is_tui;
             if (!is_tui) {
-                std::cout << "info depth " << depth << " score cp " << best_score 
-                          << " nodes " << info.nodes << " pv " << best_move_overall.to_string() << "\n";
+                std::cout << "info depth " << depth << " score cp " << best_score << " nodes " << info.nodes << " pv "
+                          << best_move_overall.to_string() << "\n";
             }
         }
     }
@@ -325,28 +310,25 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
 
 Move search(Board board, int depth_limit, long long time_limit_ms) {
     global_stop = false;
-    
+
     int active_threads = num_threads > 0 ? num_threads : 1;
-    
+
     std::vector<std::thread> workers;
     // Spawn helper threads (Lazy SMP)
     for (int i = 1; i < active_threads; i++) {
-        workers.emplace_back([board, depth_limit, time_limit_ms]() {
-            search_worker(board, depth_limit, time_limit_ms, false);
-        });
+        workers.emplace_back(
+            [board, depth_limit, time_limit_ms]() { search_worker(board, depth_limit, time_limit_ms, false); });
     }
-    
+
     // Main thread does the exact same search, but prints UCI info
     Move best = search_worker(board, depth_limit, time_limit_ms, true);
-    
+
     // Stop all background threads once the main thread finishes
     global_stop = true;
-    
-    for (auto& t : workers) {
-        if (t.joinable()) {
-            t.join();
-        }
+
+    for (auto &t : workers) {
+        if (t.joinable()) { t.join(); }
     }
-    
+
     return best;
 }

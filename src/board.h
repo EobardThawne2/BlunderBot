@@ -14,7 +14,7 @@ struct BoardState {
 };
 
 class Board {
-public:
+  public:
     uint64_t piece_bb[6];
     uint64_t color_bb[2];
 
@@ -29,7 +29,7 @@ public:
     int history_ply;
 
     Board();
-    void parse_fen(const std::string& fen);
+    void parse_fen(const std::string &fen);
     void print_board() const;
     void print_board_tui() const;
 
@@ -41,6 +41,6 @@ public:
     bool in_check(Color side) const;
     bool is_draw() const;
 
-private:
+  private:
     void clear();
 };
