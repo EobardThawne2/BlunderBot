@@ -966,7 +966,9 @@ INLINE bool update_accumulator(Position *pos) {
 INLINE void transform(Position *pos, clipped_t *output, mask_t *outMask) {
     if (!update_accumulator(pos)) refresh_accumulator(pos);
 
+    // clang-format off
     int16_t (*accumulation)[2][256] = &pos->nnue[0]->accumulator.accumulation;
+    // clang-format on
     (void)outMask; // avoid compiler warning
 
     const int perspectives[2] = {pos->player, !pos->player};
