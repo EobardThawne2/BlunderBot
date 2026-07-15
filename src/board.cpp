@@ -379,3 +379,20 @@ void Board::unmake_null_move() {
     side_to_move = side_to_move == WHITE ? BLACK : WHITE;
     if (side_to_move == BLACK) full_move_number--;
 }
+
+bool Board::is_draw() const {
+    if (half_move_clock >= 100) return true;
+    
+    int repetitions = 0;
+    // Check backwards in history up to the last pawn move or capture
+    // which resets the half_move_clock
+    for (int i = history_ply - 2; i >= 0 && history_ply - i <= half_move_clock; i -= 2) {
+        if (history[i].hash_key == hash_key) {
+            repetitions++;
+            if (repetitions >= 1) { // In search, 1 repetition is usually enough to call it a draw
+                return true;
+            }
+        }
+    }
+    return false;
+}

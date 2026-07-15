@@ -1,3 +1,9 @@
+# Compiler Files
+.vs/
+.vscode/
+.idea/
+.DS_Store
+
 # CMake Build directory
 build/
 CMakeCache.txt

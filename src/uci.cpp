@@ -66,17 +66,9 @@ void parse_go(Board& board, std::istringstream& ss) {
     std::cout << "bestmove " << best.to_string() << std::endl;
 }
 
-#ifdef _WIN32
-#include <windows.h>
-int get_hardware_concurrency() {
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-    return sysinfo.dwNumberOfProcessors;
-}
-int num_threads = get_hardware_concurrency();
-#else
-int num_threads = 1;
-#endif
+#include <thread>
+int num_threads = std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1;
+
 
 void uci_loop() {
     Board board;

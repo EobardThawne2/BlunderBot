@@ -134,6 +134,7 @@ int negamax(Board& board, int depth, int alpha, int beta, bool is_null = false) 
     info.nodes++;
 
     if (depth == 0) return quiescence(board, alpha, beta);
+    if (board.is_draw()) return 0;
 
     int tt_score;
     Move hash_move;
@@ -322,39 +323,18 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
     return best_move_overall;
 }
 
-#ifdef _WIN32
-#include <windows.h>
-struct ThreadArgs {
-    Board board;
-    int depth_limit;
-    long long time_limit_ms;
-};
-DWORD WINAPI search_worker_wrapper(LPVOID lpParam) {
-    ThreadArgs* args = (ThreadArgs*)lpParam;
-    search_worker(args->board, args->depth_limit, args->time_limit_ms, false);
-    delete args;
-    return 0;
-}
-#endif
-
 Move search(Board board, int depth_limit, long long time_limit_ms) {
     global_stop = false;
     
     int active_threads = num_threads > 0 ? num_threads : 1;
     
-#ifdef _WIN32
-    std::vector<HANDLE> workers;
+    std::vector<std::thread> workers;
     // Spawn helper threads (Lazy SMP)
     for (int i = 1; i < active_threads; i++) {
-        ThreadArgs* args = new ThreadArgs{board, depth_limit, time_limit_ms};
-        HANDLE hThread = CreateThread(NULL, 0, search_worker_wrapper, args, 0, NULL);
-        if (hThread) {
-            workers.push_back(hThread);
-        } else {
-            delete args;
-        }
+        workers.emplace_back([board, depth_limit, time_limit_ms]() {
+            search_worker(board, depth_limit, time_limit_ms, false);
+        });
     }
-#endif
     
     // Main thread does the exact same search, but prints UCI info
     Move best = search_worker(board, depth_limit, time_limit_ms, true);
@@ -362,14 +342,11 @@ Move search(Board board, int depth_limit, long long time_limit_ms) {
     // Stop all background threads once the main thread finishes
     global_stop = true;
     
-#ifdef _WIN32
-    if (!workers.empty()) {
-        WaitForMultipleObjects(workers.size(), workers.data(), TRUE, INFINITE);
-        for (HANDLE h : workers) {
-            CloseHandle(h);
+    for (auto& t : workers) {
+        if (t.joinable()) {
+            t.join();
         }
     }
-#endif
     
     return best;
 }

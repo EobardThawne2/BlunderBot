@@ -39,6 +39,7 @@ public:
     void make_null_move();
     void unmake_null_move();
     bool in_check(Color side) const;
+    bool is_draw() const;
 
 private:
     void clear();
