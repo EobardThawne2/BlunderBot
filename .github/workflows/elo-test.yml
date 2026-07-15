@@ -20,10 +20,17 @@ jobs:
         ref: main
         path: main-branch
 
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ubuntu-latest-ccache-${{ github.ref }}
+        restore-keys: |
+          ubuntu-latest-ccache-
+
     - name: Build PR Engine
       run: |
         cd pr-branch
-        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build --config Release
         mv build/BlunderBot ../BlunderBot-pr
         cp nn-62ef826d1a6d.nnue ../
@@ -31,7 +38,7 @@ jobs:
     - name: Build Main Engine
       run: |
         cd main-branch
-        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build --config Release
         mv build/BlunderBot ../BlunderBot-main
 
@@ -42,14 +49,19 @@ jobs:
 
     - name: Run Match
       run: |
-        # Play 100 games at 1s + 0.1s increment
+        # Play games using SPRT (Sequential Probability Ratio Test)
+        # elo0=0, elo1=10: fails if PR is worse, passes if equal or better
         cutechess-cli \
           -engine cmd=./BlunderBot-pr name=PR-Version \
           -engine cmd=./BlunderBot-main name=Main-Version \
           -each proto=uci tc=1+0.1 \
-          -games 100 -rounds 50 -repeat \
+          -games 500 -rounds 250 -repeat \
+          -sprt elo0=0 elo1=10 alpha=0.05 beta=0.05 \
           -concurrency 4 \
-          -pgnout match.pgn || true
+          -pgnout match.pgn > cutechess.out || true
         
-        # Output the results so they appear in GitHub Actions logs
-        cat match.pgn
+        # Display the full output for logs
+        cat cutechess.out
+        
+        # Run the parser to determine if SPRT failed
+        python3 tests/parse_elo.py cutechess.out

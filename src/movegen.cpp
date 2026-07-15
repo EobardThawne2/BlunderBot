@@ -174,3 +174,18 @@ std::vector<Move> MoveGen::generate_legal_moves(Board& board) {
     }
     return legal;
 }
+
+uint64_t MoveGen::perft(Board& board, int depth) {
+    if (depth == 0) return 1ULL;
+
+    std::vector<Move> moves = generate_legal_moves(board);
+    if (depth == 1) return moves.size();
+
+    uint64_t nodes = 0;
+    for (Move m : moves) {
+        board.make_move(m);
+        nodes += perft(board, depth - 1);
+        board.unmake_move(m);
+    }
+    return nodes;
+}

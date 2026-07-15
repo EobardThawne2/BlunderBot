@@ -13,8 +13,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ubuntu-latest-ccache-${{ github.ref }}
+        restore-keys: |
+          ubuntu-latest-ccache-
+
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
     - name: Build Engine
       run: cmake --build ${{github.workspace}}/build --config Release
@@ -22,3 +29,7 @@ jobs:
     - name: Run Smoke Test
       run: |
         python3 tests/smoke_test.py
+
+    - name: Run Perft Test
+      run: |
+        python3 tests/perft_test.py

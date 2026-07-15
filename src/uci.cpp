@@ -111,6 +111,15 @@ void uci_loop() {
             break;
         } else if (token == "d") {
             board.print_board();
+        } else if (token == "perft") {
+            int depth = 1;
+            if (ss >> depth) {
+                std::cout << "DEBUG: starting perft " << depth << "\n";
+                uint64_t nodes = MoveGen::perft(board, depth);
+                std::cout << "Nodes searched: " << nodes << "\n";
+            } else {
+                std::cout << "DEBUG: perft depth parsing failed\n";
+            }
         }
     }
 }
