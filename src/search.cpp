@@ -91,8 +91,19 @@ int quiescence(Board &board, int alpha, int beta) {
     if (global_stop) return 0;
     info.nodes++;
 
+    int tt_score;
+    Move hash_move;
+    if (TT.probe(board.hash_key, 0, alpha, beta, tt_score, hash_move)) { return tt_score; }
+
     int stand_pat = evaluate(board);
-    if (stand_pat >= beta) return beta;
+    if (stand_pat >= beta) {
+        TT.store(board.hash_key, 0, beta, TT_BETA, Move());
+        return beta;
+    }
+
+    // Delta Pruning
+    if (stand_pat + 1000 < alpha) { return alpha; }
+
     if (alpha < stand_pat) alpha = stand_pat;
 
     std::vector<Move> moves = MoveGen::generate_pseudo_legal_moves(board);
@@ -112,9 +123,14 @@ int quiescence(Board &board, int alpha, int beta) {
         int score = -quiescence(board, -beta, -alpha);
         board.unmake_move(m);
 
-        if (score >= beta) return beta;
+        if (score >= beta) {
+            TT.store(board.hash_key, 0, beta, TT_BETA, m);
+            return beta;
+        }
         if (score > alpha) alpha = score;
     }
+
+    TT.store(board.hash_key, 0, alpha, TT_ALPHA, Move());
     return alpha;
 }
 
