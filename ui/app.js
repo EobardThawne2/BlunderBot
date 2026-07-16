@@ -274,8 +274,13 @@ updateStatus();
 function requestEngineMove() {
     // Send position
     ws.send("position fen " + game.fen());
+    
+    // Get difficulty setting
+    const difficultySelect = document.getElementById('difficulty-select');
+    const targetDepth = difficultySelect ? difficultySelect.value : "6";
+    
     // Start searching
-    ws.send("go depth 6"); // Depth 6 for snappy response
+    ws.send("go depth " + targetDepth);
 }
 
 function parseEngineOutput(msg) {
