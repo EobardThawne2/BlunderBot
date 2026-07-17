@@ -35,6 +35,20 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config Release
 
+    - name: Generate Opening Book
+      shell: bash
+      working-directory: build
+      run: |
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          if [ -f "Release/make_book.exe" ]; then
+            Release/make_book.exe ../data/openings.txt blunderbot_book.bin
+          else
+            ./make_book.exe ../data/openings.txt blunderbot_book.bin
+          fi
+        else
+          ./make_book ../data/openings.txt blunderbot_book.bin
+        fi
+
     - name: Package Release
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
@@ -49,13 +63,13 @@ jobs:
             echo "Error: BlunderBot.exe not found!"
             exit 1
           fi
-          7z a BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue
+          7z a BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue blunderbot_book.bin
         else
           if [ ! -f "BlunderBot" ]; then
             echo "Error: BlunderBot not found!"
             exit 1
           fi
-          zip -r BlunderBot-${{ matrix.os }}.zip BlunderBot nn-62ef826d1a6d.nnue
+          zip -r BlunderBot-${{ matrix.os }}.zip BlunderBot nn-62ef826d1a6d.nnue blunderbot_book.bin
         fi
 
     - name: Release

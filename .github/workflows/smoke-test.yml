@@ -26,6 +26,11 @@ jobs:
     - name: Build Engine
       run: cmake --build ${{github.workspace}}/build --config Release
 
+    - name: Generate Opening Book
+      shell: bash
+      working-directory: build
+      run: ./make_book ../data/openings.txt blunderbot_book.bin
+
     - name: Run Smoke Test
       run: |
         python3 tests/smoke_test.py

@@ -2,6 +2,7 @@
 #include "search.h"
 #include "movegen.h"
 #include "tt.h"
+#include "book.h"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -66,6 +67,14 @@ void parse_go(Board &board, std::istringstream &ss) {
         if (time_left > 0) { time_limit = (time_left / 20) + (inc / 2); }
     }
 
+    // Try probing the opening book first
+    Move book_move = OpeningBook::probe(board.hash_key);
+    if (book_move.move != 0) {
+        std::cout << "info string Playing book move\n";
+        std::cout << "bestmove " << book_move.to_string() << std::endl;
+        return;
+    }
+
     Move best = search(board, depth, time_limit);
     std::cout << "bestmove " << best.to_string() << std::endl;
 }
@@ -74,6 +83,8 @@ void parse_go(Board &board, std::istringstream &ss) {
 int num_threads = std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() : 1;
 
 void uci_loop() {
+    OpeningBook::load("blunderbot_book.bin");
+
     Board board;
     board.parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 

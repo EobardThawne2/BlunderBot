@@ -8,8 +8,9 @@ WORKDIR /app
 # Copy all project files
 COPY . .
 
-# Build the C++ engine
+# Build the C++ engine and generate opening book
 RUN mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . --config Release
+RUN cd build && ./make_book ../data/openings.txt ../blunderbot_book.bin
 
 # Install Python requirements
 RUN pip install --no-cache-dir -r requirements.txt

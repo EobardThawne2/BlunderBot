@@ -205,12 +205,18 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
             int R = (moves_searched > 6) ? 2 : 1;
             score = -negamax(board, depth - 1 - R, -alpha - 1, -alpha);
             if (score > alpha && score < beta) {
-                // Re-search at full depth
+                // Re-search at full depth and full window
                 score = -negamax(board, depth - 1, -beta, -alpha);
             }
-        } else {
-            // Normal PVS/Alpha-Beta search
+        } else if (moves_searched == 0) {
+            // PV Node
             score = -negamax(board, depth - 1, -beta, -alpha);
+        } else {
+            // PVS Zero Window Search
+            score = -negamax(board, depth - 1, -alpha - 1, -alpha);
+            if (score > alpha && score < beta) {
+                score = -negamax(board, depth - 1, -beta, -alpha);
+            }
         }
 
         board.unmake_move(m);
@@ -279,10 +285,22 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
             best_score = -50000;
             int current_alpha = alpha; // Keep track of the starting alpha for fail-low checks
 
+            int moves_searched = 0;
             for (Move m : moves) {
                 board.make_move(m);
-                int score = -negamax(board, depth - 1, -beta, -alpha);
+                int score;
+                
+                if (moves_searched == 0) {
+                    score = -negamax(board, depth - 1, -beta, -alpha);
+                } else {
+                    score = -negamax(board, depth - 1, -alpha - 1, -alpha);
+                    if (score > alpha && score < beta) {
+                        score = -negamax(board, depth - 1, -beta, -alpha);
+                    }
+                }
+                
                 board.unmake_move(m);
+                moves_searched++;
 
                 if (global_stop) break;
 

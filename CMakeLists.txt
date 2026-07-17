@@ -23,10 +23,21 @@ set(SOURCES
     src/zobrist.cpp
     src/uci.cpp
     src/nnue.cpp
+    src/book.cpp
     src/misc.cpp
 )
 
+set(MAKE_BOOK_SOURCES
+    src/make_book.cpp
+    src/board.cpp
+    src/bitboard.cpp
+    src/magic.cpp
+    src/movegen.cpp
+    src/zobrist.cpp
+)
+
 add_executable(BlunderBot ${SOURCES})
+add_executable(make_book ${MAKE_BOOK_SOURCES})
 
 find_package(Threads REQUIRED)
 target_link_libraries(BlunderBot PRIVATE Threads::Threads)

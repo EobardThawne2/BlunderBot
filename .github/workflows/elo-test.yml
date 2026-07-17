@@ -32,6 +32,7 @@ jobs:
         cd pr-branch
         cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build --config Release
+        if [ -f build/make_book ]; then build/make_book data/openings.txt blunderbot_book.bin; cp blunderbot_book.bin ../; fi
         mv build/BlunderBot ../BlunderBot-pr
         cp nn-62ef826d1a6d.nnue ../
 
@@ -40,6 +41,7 @@ jobs:
         cd main-branch
         cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build --config Release
+        if [ -f build/make_book ]; then build/make_book data/openings.txt blunderbot_book_main.bin; cp blunderbot_book_main.bin ../blunderbot_book.bin; fi
         mv build/BlunderBot ../BlunderBot-main
 
     - name: Install Cutechess

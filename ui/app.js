@@ -5,6 +5,7 @@ const statDepthEl = document.getElementById('stat-depth');
 const statNodesEl = document.getElementById('stat-nodes');
 const statBestMoveEl = document.getElementById('stat-bestmove');
 const consoleOutputEl = document.getElementById('console-output');
+const pgnOutputEl = document.getElementById('pgn-output');
 
 let board = null;
 let game = new Chess();
@@ -12,6 +13,17 @@ const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 let ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
 let selectedSquare = null;
 let pendingPromotionMove = null;
+let playerColor = 'w';
+
+// Audio
+const sndMove = new Audio('https://lichess1.org/assets/3d/sound/standard/Move.ogg');
+const sndCapture = new Audio('https://lichess1.org/assets/3d/sound/standard/Capture.ogg');
+
+function playMoveSound(move) {
+    if (!move) return;
+    if (move.captured) sndCapture.play().catch(()=>{});
+    else sndMove.play().catch(()=>{});
+}
 
 // WebSocket Connection
 ws.onopen = () => {
@@ -51,8 +63,8 @@ function onDragStart (source, piece, position, orientation) {
     // do not pick up pieces if the game is over
     if (game.game_over()) return false;
     
-    // only pick up pieces for White
-    if (piece.search(/^b/) !== -1) return false;
+    // only pick up pieces for the player's color
+    if (piece.charAt(0) !== playerColor) return false;
 
     // Change selection and show legal moves
     if (selectedSquare !== source) {
@@ -86,6 +98,7 @@ function onDrop (source, target) {
 
     if (move === null) return 'snapback';
 
+    playMoveSound(move);
     updateStatus();
     requestEngineMove();
 }
@@ -103,7 +116,7 @@ $(document).on('click', '#board .square-55d63', function() {
         let piece = game.get(sq);
         
         // Clicking another friendly piece switches selection
-        if (piece && piece.color === 'w') {
+        if (piece && piece.color === playerColor) {
             removeHighlights();
             selectedSquare = sq;
             $('#board .square-' + sq).addClass('square-selected');
@@ -129,6 +142,7 @@ $(document).on('click', '#board .square-55d63', function() {
         selectedSquare = null;
 
         if (move !== null) {
+            playMoveSound(move);
             board.position(game.fen());
             updateStatus();
             requestEngineMove();
@@ -136,7 +150,7 @@ $(document).on('click', '#board .square-55d63', function() {
     } else if (!selectedSquare) {
         // If clicking a friendly piece from an unselected state
         let piece = game.get(sq);
-        if (piece && piece.color === 'w') {
+        if (piece && piece.color === playerColor) {
             selectedSquare = sq;
             $('#board .square-' + sq).addClass('square-selected');
             showLegalMoves(sq);
@@ -201,6 +215,7 @@ function executePromotion(promoPiece) {
     pendingPromotionMove = null;
     
     if (move !== null) {
+        playMoveSound(move);
         board.position(game.fen());
         updateStatus();
         requestEngineMove();
@@ -255,6 +270,12 @@ function updateStatus () {
     // Log the status if it's check/mate
     if (game.in_checkmate() || game.in_check() || game.in_draw()) {
         logToConsole("Status: " + status);
+    }
+    
+    // Update PGN History
+    if (pgnOutputEl) {
+        pgnOutputEl.textContent = game.pgn();
+        pgnOutputEl.scrollTop = pgnOutputEl.scrollHeight;
     }
 }
 
@@ -332,11 +353,13 @@ function parseEngineOutput(msg) {
             const to = bestmove.substring(2, 4);
             const promo = bestmove.length > 4 ? bestmove.charAt(4) : null;
             
-            game.move({
+            let move = game.move({
                 from: from,
                 to: to,
                 promotion: promo || 'q'
             });
+            
+            playMoveSound(move);
             
             board.position(game.fen());
             updateStatus();
@@ -385,6 +408,18 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     board.start();
     updateStatus();
     updateEvalBar(0);
+});
+
+document.getElementById('btn-flip').addEventListener('click', () => {
+    playerColor = playerColor === 'w' ? 'b' : 'w';
+    board.orientation(playerColor === 'w' ? 'white' : 'black');
+    
+    // Auto move if player is black on turn 1
+    if (playerColor === 'b' && game.history().length === 0) {
+        requestEngineMove();
+    } else if (game.turn() !== playerColor && !game.game_over()) {
+        requestEngineMove();
+    }
 });
 
 document.getElementById('btn-engine').addEventListener('click', () => {

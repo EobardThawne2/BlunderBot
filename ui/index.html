@@ -60,6 +60,7 @@
             </div>
             
             <div class="controls">
+                <button id="btn-flip">Flip Board</button>
                 <select id="difficulty-select" class="difficulty-select">
                     <option value="2">Easy (Depth 2)</option>
                     <option value="4">Medium (Depth 4)</option>
@@ -91,6 +92,11 @@
                     <div class="stat-label">NPS</div>
                     <div id="stat-nps" class="stat-value">-</div>
                 </div>
+            </div>
+            
+            <div class="pgn-history">
+                <div class="hud-header">Move History</div>
+                <div id="pgn-output" class="pgn-output"></div>
             </div>
             
             <div class="console">

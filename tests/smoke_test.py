@@ -4,9 +4,17 @@ import os
 import sys
 
 def main():
-    engine_path = os.path.join("build", "BlunderBot")
-    if not os.path.exists(engine_path):
-        engine_path = engine_path + ".exe"
+    engine_path = ""
+    if os.path.exists(os.path.join("build", "Release", "BlunderBot.exe")):
+        engine_path = os.path.join("build", "Release", "BlunderBot.exe")
+    elif os.path.exists(os.path.join("build", "BlunderBot")):
+        engine_path = os.path.join("build", "BlunderBot")
+    elif os.path.exists(os.path.join("build", "BlunderBot.exe")):
+        engine_path = os.path.join("build", "BlunderBot.exe")
+        
+    if not engine_path:
+        print(f"Error: Engine not found")
+        sys.exit(1)
     
     print(f"Testing engine: {engine_path}")
     process = subprocess.Popen(
