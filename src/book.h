@@ -5,8 +5,8 @@
 #include "board.h"
 
 class OpeningBook {
-public:
-    static void load(const std::string& filename);
+  public:
+    static void load(const std::string &filename);
     static Move probe(uint64_t hash_key);
     static bool is_loaded();
 };

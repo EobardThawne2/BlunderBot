@@ -18,7 +18,7 @@ struct BookEntry {
     uint32_t learn;
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <openings.txt> <output.bin>\n";
         return 1;
@@ -69,13 +69,15 @@ int main(int argc, char* argv[]) {
 
             // We use BlunderBot's native hash and move encoding
             uint64_t key = board.hash_key;
-            uint16_t encoded_move = (uint16_t)(matched_move.move & 0xFFFF); // 16 bits is enough since our move struct uses bits 0-19, wait...
+            uint16_t encoded_move =
+                (uint16_t)(matched_move.move &
+                           0xFFFF); // 16 bits is enough since our move struct uses bits 0-19, wait...
             // Our Move struct uses up to bit 19!
             // Wait, bits 0-15 cover from, to, and promoted.
             // is_capture (16), is_en_passant (17), is_castling (18), is_double_push (19).
             // Do we need the flags? The engine can just match (from, to, promoted) in legal moves!
             // So we only need bits 0-15 to identify the move uniquely.
-            
+
             entries[key][encoded_move]++;
 
             board.make_move(matched_move);
@@ -83,8 +85,8 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<BookEntry> flat_entries;
-    for (auto const& [key, moves] : entries) {
-        for (auto const& [move, weight] : moves) {
+    for (auto const &[key, moves] : entries) {
+        for (auto const &[move, weight] : moves) {
             BookEntry entry;
             entry.key = key;
             entry.move = move;
@@ -95,9 +97,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Sort by key for binary search
-    std::sort(flat_entries.begin(), flat_entries.end(), [](const BookEntry& a, const BookEntry& b) {
-        return a.key < b.key;
-    });
+    std::sort(flat_entries.begin(), flat_entries.end(),
+              [](const BookEntry &a, const BookEntry &b) { return a.key < b.key; });
 
     std::ofstream outfile(bin_file, std::ios::binary);
     if (!outfile.is_open()) {
@@ -105,8 +106,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    for (const BookEntry& entry : flat_entries) {
-        outfile.write(reinterpret_cast<const char*>(&entry), sizeof(BookEntry));
+    for (const BookEntry &entry : flat_entries) {
+        outfile.write(reinterpret_cast<const char *>(&entry), sizeof(BookEntry));
     }
 
     std::cout << "Successfully compiled " << flat_entries.size() << " book entries into " << bin_file << "!\n";

@@ -14,7 +14,7 @@ struct BookEntry {
 static std::vector<BookEntry> book_entries;
 static bool loaded = false;
 
-void OpeningBook::load(const std::string& filename) {
+void OpeningBook::load(const std::string &filename) {
     std::ifstream file(filename, std::ios::binary);
     if (!file.is_open()) {
         std::cerr << "info string Warning: Could not load opening book " << filename << "\n";
@@ -33,7 +33,7 @@ void OpeningBook::load(const std::string& filename) {
     size_t num_entries = file_size / sizeof(BookEntry);
     book_entries.resize(num_entries);
 
-    if (file.read(reinterpret_cast<char*>(book_entries.data()), file_size)) {
+    if (file.read(reinterpret_cast<char *>(book_entries.data()), file_size)) {
         loaded = true;
         std::cout << "info string Loaded custom opening book with " << num_entries << " positions.\n";
     } else {
@@ -77,21 +77,17 @@ Move OpeningBook::probe(uint64_t hash_key) {
 
     // Simple roulette wheel selection based on weight
     int total_weight = 0;
-    for (const auto& entry : candidates) {
-        total_weight += entry.weight;
-    }
+    for (const auto &entry : candidates) { total_weight += entry.weight; }
 
     if (total_weight == 0) return Move(candidates[0].move);
 
     // Naive pseudo-random based on current time (simple but effective for books)
     int r_val = rand() % total_weight;
     int current_weight = 0;
-    
-    for (const auto& entry : candidates) {
+
+    for (const auto &entry : candidates) {
         current_weight += entry.weight;
-        if (r_val < current_weight) {
-            return Move(entry.move);
-        }
+        if (r_val < current_weight) { return Move(entry.move); }
     }
 
     return Move(candidates[0].move);

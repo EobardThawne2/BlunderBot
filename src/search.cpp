@@ -214,9 +214,7 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
         } else {
             // PVS Zero Window Search
             score = -negamax(board, depth - 1, -alpha - 1, -alpha);
-            if (score > alpha && score < beta) {
-                score = -negamax(board, depth - 1, -beta, -alpha);
-            }
+            if (score > alpha && score < beta) { score = -negamax(board, depth - 1, -beta, -alpha); }
         }
 
         board.unmake_move(m);
@@ -289,16 +287,14 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
             for (Move m : moves) {
                 board.make_move(m);
                 int score;
-                
+
                 if (moves_searched == 0) {
                     score = -negamax(board, depth - 1, -beta, -alpha);
                 } else {
                     score = -negamax(board, depth - 1, -alpha - 1, -alpha);
-                    if (score > alpha && score < beta) {
-                        score = -negamax(board, depth - 1, -beta, -alpha);
-                    }
+                    if (score > alpha && score < beta) { score = -negamax(board, depth - 1, -beta, -alpha); }
                 }
-                
+
                 board.unmake_move(m);
                 moves_searched++;
 
