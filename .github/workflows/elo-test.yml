@@ -46,8 +46,10 @@ jobs:
 
     - name: Install Cutechess
       run: |
-        sudo apt-get update
-        sudo apt-get install -y cutechess-cli
+        wget https://github.com/cutechess/cutechess/releases/download/cli-1.2.0/cutechess-cli-1.2.0-linux64.tar.gz
+        tar -xzf cutechess-cli-1.2.0-linux64.tar.gz
+        chmod +x cutechess-cli
+        sudo mv cutechess-cli /usr/local/bin/
 
     - name: Run Match
       run: |
