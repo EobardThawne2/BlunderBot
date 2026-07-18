@@ -61,8 +61,7 @@ jobs:
           -each tc=1+0.1 \
           -games 500 -rounds 250 -repeat \
           -sprt elo0=0 elo1=10 alpha=0.05 beta=0.05 \
-          -concurrency 4 \
-          -pgnout match.pgn > cutechess.out || true
+          -concurrency 4 > cutechess.out || true
         
         # Display the full output for logs
         cat cutechess.out
