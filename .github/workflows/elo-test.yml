@@ -1,7 +1,7 @@
 name: Elo Regression Test
 
 on:
-  pull_request:
+  push:
     branches: [ "main" ]
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
     - name: Checkout Main branch
       uses: actions/checkout@v4
       with:
-        ref: main
+        ref: ${{ github.event.before }}
         path: main-branch
 
     - name: Set up ccache
