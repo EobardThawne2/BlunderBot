@@ -44,10 +44,12 @@ jobs:
         if [ -f build/make_book ]; then build/make_book data/openings.txt blunderbot_book_main.bin; cp blunderbot_book_main.bin ../blunderbot_book.bin; fi
         mv build/BlunderBot ../BlunderBot-main
 
-    - name: Install Cutechess
+    - name: Install Match Runner
       run: |
-        sudo apt-get update
-        sudo apt-get install -y cutechess
+        git clone https://github.com/lucasart/c-chess-cli.git
+        cd c-chess-cli
+        python3 make.py
+        sudo mv c-chess-cli /usr/local/bin/cutechess-cli
 
     - name: Run Match
       run: |
