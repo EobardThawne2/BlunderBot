@@ -64,7 +64,11 @@ void parse_go(Board &board, std::istringstream &ss) {
     } else {
         long long time_left = (board.side_to_move == WHITE) ? wtime : btime;
         long long inc = (board.side_to_move == WHITE) ? winc : binc;
-        if (time_left > 0) { time_limit = (time_left / 20) + (inc / 2); }
+        if (time_left > 0) { 
+            time_limit = (time_left / 20) + (inc / 2); 
+            time_limit -= 30; // 30ms network overhead buffer
+            if (time_limit < 1) time_limit = 1;
+        }
     }
 
     // Try probing the opening book first
