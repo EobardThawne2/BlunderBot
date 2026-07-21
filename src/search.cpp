@@ -147,10 +147,10 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
     if (TT.probe(board.hash_key, depth, alpha, beta, tt_score, hash_move)) { return tt_score; }
 
     bool in_check = board.in_check(board.side_to_move);
-    int extension = in_check ? 1 : 0;
 
     // Internal Iterative Deepening (IID)
-    if (depth >= 4 && hash_move.move == 0 && !is_null && !in_check) {
+    bool is_pv = (beta - alpha > 1);
+    if (depth >= 4 && hash_move.move == 0 && !is_null && !in_check && is_pv) {
         negamax(board, depth - 2, alpha, beta, is_null);
         TT.probe(board.hash_key, 0, alpha, beta, tt_score, hash_move);
     }
@@ -209,20 +209,21 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
 
         // Late Move Reductions (LMR)
         bool is_quiet = !m.is_capture() && m.promoted() == PIECE_NONE;
-        if (depth >= 3 && moves_searched >= 3 && is_quiet && !in_check) {
+        bool gives_check = board.in_check(board.side_to_move);
+        if (depth >= 3 && moves_searched >= 3 && is_quiet && !in_check && !gives_check) {
             int R = (moves_searched > 6) ? 2 : 1;
-            score = -negamax(board, depth - 1 + extension - R, -alpha - 1, -alpha);
+            score = -negamax(board, depth - 1 - R, -alpha - 1, -alpha);
             if (score > alpha && score < beta) {
                 // Re-search at full depth and full window
-                score = -negamax(board, depth - 1 + extension, -beta, -alpha);
+                score = -negamax(board, depth - 1, -beta, -alpha);
             }
         } else if (moves_searched == 0) {
             // PV Node
-            score = -negamax(board, depth - 1 + extension, -beta, -alpha);
+            score = -negamax(board, depth - 1, -beta, -alpha);
         } else {
             // PVS Zero Window Search
-            score = -negamax(board, depth - 1 + extension, -alpha - 1, -alpha);
-            if (score > alpha && score < beta) { score = -negamax(board, depth - 1 + extension, -beta, -alpha); }
+            score = -negamax(board, depth - 1, -alpha - 1, -alpha);
+            if (score > alpha && score < beta) { score = -negamax(board, depth - 1, -beta, -alpha); }
         }
 
         board.unmake_move(m);
@@ -291,19 +292,16 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
             best_score = -50000;
             int current_alpha = alpha; // Keep track of the starting alpha for fail-low checks
 
-            bool in_check = board.in_check(board.side_to_move);
-            int extension = in_check ? 1 : 0;
-
             int moves_searched = 0;
             for (Move m : moves) {
                 board.make_move(m);
                 int score;
 
                 if (moves_searched == 0) {
-                    score = -negamax(board, depth - 1 + extension, -beta, -alpha);
+                    score = -negamax(board, depth - 1, -beta, -alpha);
                 } else {
-                    score = -negamax(board, depth - 1 + extension, -alpha - 1, -alpha);
-                    if (score > alpha && score < beta) { score = -negamax(board, depth - 1 + extension, -beta, -alpha); }
+                    score = -negamax(board, depth - 1, -alpha - 1, -alpha);
+                    if (score > alpha && score < beta) { score = -negamax(board, depth - 1, -beta, -alpha); }
                 }
 
                 board.unmake_move(m);
