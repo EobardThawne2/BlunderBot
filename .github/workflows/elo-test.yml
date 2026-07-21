@@ -62,7 +62,7 @@ jobs:
         cutechess-cli \
           -engine cmd=./BlunderBot-pr name=PR-Version \
           -engine cmd=./BlunderBot-main name=Main-Version \
-          -each tc=10+0.1 \
+          -each tc=0:10+0.1 \
           -games 500 -rounds 250 -repeat \
           -sprt elo0=0 elo1=10 alpha=0.05 beta=0.05 \
           -concurrency 4 > cutechess.out || true
