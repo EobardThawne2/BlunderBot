@@ -7,6 +7,11 @@
 
 extern std::atomic<bool> global_stop;
 
+extern bool use_see;
+extern bool use_singular_extensions;
+extern bool use_countermove;
+extern bool use_probcut;
+
 struct SearchInfo {
     int nodes;
     long long start_time;

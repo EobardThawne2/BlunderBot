@@ -10,8 +10,21 @@
 #include <cmath>
 
 std::atomic<bool> global_stop{false};
+bool use_see = true;
+bool use_singular_extensions = true;
+bool use_countermove = true;
+bool use_probcut = true;
 thread_local SearchInfo info;
 extern int num_threads; // Defined in uci.cpp
+
+Piece get_piece_on(const Board &board, int sq) {
+    for (int p = PAWN; p <= KING; p++) {
+        if (Utils::test_bit(board.piece_bb[p], sq)) {
+            return static_cast<Piece>(p);
+        }
+    }
+    return PIECE_NONE;
+}
 
 void clear_heuristics() {
     for (int i = 0; i < 64; i++) {
@@ -44,17 +57,26 @@ void check_time() {
 int score_move(Board &board, Move m, Move hash_move, int depth, Move prev_move) {
     if (m.move == hash_move.move) { return 1000000; }
     if (m.is_capture()) {
-        int see_score = see(board, m);
-        if (see_score >= 0)
-            return 100000 + see_score; // Good/Equal captures
-        else
-            return 50000 + see_score; // Bad captures
+        if (use_see) {
+            int see_score = see(board, m);
+            if (see_score >= 0)
+                return 100000 + see_score; // Good/Equal captures
+            else
+                return 50000 + see_score; // Bad captures
+        } else {
+            int victim_vals[] = {100, 300, 300, 500, 900, 0};
+            int attacker_vals[] = {100, 300, 300, 500, 900, 10000};
+            Piece victim = get_piece_on(board, m.to());
+            Piece attacker = get_piece_on(board, m.from());
+            if (victim == PIECE_NONE) victim = PAWN;
+            return 100000 + victim_vals[victim] * 10 - attacker_vals[attacker];
+        }
     }
 
     // Quiet moves: Killer, Countermove, and History heuristics
     if (depth >= 0 && depth < 64) {
         if (m.move == info.killer_moves[depth][0].move) return 90000;
-        if (prev_move.move != 0 && m.move == info.countermoves[prev_move.from()][prev_move.to()].move) return 85000;
+        if (use_countermove && prev_move.move != 0 && m.move == info.countermoves[prev_move.from()][prev_move.to()].move) return 85000;
         if (m.move == info.killer_moves[depth][1].move) return 80000;
     }
     return info.history_table[board.side_to_move][m.from()][m.to()];
@@ -64,7 +86,7 @@ void sort_moves(Board &board, std::vector<Move> &moves, Move hash_move, int dept
     std::vector<int> scores(moves.size());
     for (size_t i = 0; i < moves.size(); i++) { scores[i] = score_move(board, moves[i], hash_move, depth, prev_move); }
     for (size_t i = 1; i < moves.size(); i++) {
-        int j = i;
+        int j = static_cast<int>(i);
         while (j > 0 && scores[j - 1] < scores[j]) {
             std::swap(scores[j], scores[j - 1]);
             std::swap(moves[j], moves[j - 1]);
@@ -98,7 +120,7 @@ int quiescence(Board &board, int alpha, int beta) {
     for (Move m : moves) {
         if (m.is_capture() || m.promoted() == QUEEN) {
             // Prune bad captures in Quiescence Search
-            if (m.promoted() != QUEEN && see(board, m) < 0) continue;
+            if (use_see && m.promoted() != QUEEN && see(board, m) < 0) continue;
 
             board.make_move(m);
             if (!board.in_check(static_cast<Color>(1 - board.side_to_move))) captures.push_back(m);
@@ -156,7 +178,7 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
 
     // Singular Extension
     bool singular_extension = false;
-    if (depth >= 8 && hash_move.move != 0 && !is_null && !in_check && excluded_move.move == 0 &&
+    if (use_singular_extensions && depth >= 8 && hash_move.move != 0 && !is_null && !in_check && excluded_move.move == 0 &&
         std::abs(beta) < 40000) {
         int rBeta = alpha - 50;
         int rDepth = depth / 2;
@@ -165,7 +187,7 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
     }
 
     // ProbCut (Multi-Cut)
-    if (depth >= 5 && !in_check && !is_null && excluded_move.move == 0 && std::abs(beta) < 40000) {
+    if (use_probcut && depth >= 5 && !in_check && !is_null && excluded_move.move == 0 && std::abs(beta) < 40000) {
         int pc_beta = beta + 200;
         int pc_depth = depth - 4;
         int pc_score = negamax(board, pc_depth, pc_beta - 1, pc_beta, false, Move(), prev_move);
@@ -269,7 +291,7 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
                     info.killer_moves[depth][0] = m;
                 }
                 info.history_table[board.side_to_move][m.from()][m.to()] += depth * depth;
-                if (prev_move.move != 0) { info.countermoves[prev_move.from()][prev_move.to()] = m; }
+                if (use_countermove && prev_move.move != 0) { info.countermoves[prev_move.from()][prev_move.to()] = m; }
             }
             TT.store(board.hash_key, depth, beta, TT_BETA, m);
             return beta;

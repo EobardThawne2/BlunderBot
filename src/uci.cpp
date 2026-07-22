@@ -97,6 +97,10 @@ void uci_loop() {
     // Some GUIs expect the first output immediately
     std::cout << "id name BlunderBot" << std::endl;
     std::cout << "option name Threads type spin default " << num_threads << " min 1 max 128" << std::endl;
+    std::cout << "option name UseSEE type check default true" << std::endl;
+    std::cout << "option name UseSingularExtensions type check default true" << std::endl;
+    std::cout << "option name UseCountermove type check default true" << std::endl;
+    std::cout << "option name UseProbCut type check default true" << std::endl;
     std::cout << "uciok" << std::endl;
 
     while (std::getline(std::cin, line)) {
@@ -107,13 +111,29 @@ void uci_loop() {
         if (token == "uci") {
             std::cout << "id name BlunderBot" << std::endl;
             std::cout << "option name Threads type spin default " << num_threads << " min 1 max 128" << std::endl;
+            std::cout << "option name UseSEE type check default true" << std::endl;
+            std::cout << "option name UseSingularExtensions type check default true" << std::endl;
+            std::cout << "option name UseCountermove type check default true" << std::endl;
+            std::cout << "option name UseProbCut type check default true" << std::endl;
             std::cout << "uciok" << std::endl;
         } else if (token == "setoption") {
-            std::string name_token, option_name, value_token;
-            int option_value;
+            std::string name_token, option_name, value_token, option_value;
             ss >> name_token >> option_name >> value_token >> option_value;
-            if (name_token == "name" && option_name == "Threads" && value_token == "value") {
-                if (option_value >= 1) num_threads = option_value;
+            if (name_token == "name" && value_token == "value") {
+                if (option_name == "Threads") {
+                    try {
+                        int num = std::stoi(option_value);
+                        if (num >= 1) num_threads = num;
+                    } catch (...) {}
+                } else if (option_name == "UseSEE") {
+                    use_see = (option_value == "true");
+                } else if (option_name == "UseSingularExtensions") {
+                    use_singular_extensions = (option_value == "true");
+                } else if (option_name == "UseCountermove") {
+                    use_countermove = (option_value == "true");
+                } else if (option_name == "UseProbCut") {
+                    use_probcut = (option_value == "true");
+                }
             }
         } else if (token == "isready") {
             std::cout << "readyok" << std::endl;
