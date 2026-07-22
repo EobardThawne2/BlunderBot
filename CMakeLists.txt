@@ -25,6 +25,7 @@ set(SOURCES
     src/nnue.cpp
     src/book.cpp
     src/misc.cpp
+    src/see.cpp
 )
 
 set(MAKE_BOOK_SOURCES

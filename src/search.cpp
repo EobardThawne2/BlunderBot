@@ -2,10 +2,12 @@
 #include "evaluate.h"
 #include "movegen.h"
 #include "tt.h"
+#include "see.h"
 #include <iostream>
 #include <algorithm>
 #include <thread>
 #include <vector>
+#include <cmath>
 
 std::atomic<bool> global_stop{false};
 thread_local SearchInfo info;
@@ -21,17 +23,12 @@ void clear_heuristics() {
             for (int k = 0; k < 64; k++) { info.history_table[i][j][k] = 0; }
         }
     }
+    for (int i = 0; i < 64; i++) {
+        for (int j = 0; j < 64; j++) { info.countermoves[i][j] = Move(); }
+    }
 }
 
-// MVV-LVA [Attacker][Victim]
-const int mvv_lva[6][6] = {
-    {15, 25, 35, 45, 55, 0}, // PAWN
-    {14, 24, 34, 44, 54, 0}, // KNIGHT
-    {13, 23, 33, 43, 53, 0}, // BISHOP
-    {12, 22, 32, 42, 52, 0}, // ROOK
-    {11, 21, 31, 41, 51, 0}, // QUEEN
-    {10, 20, 30, 40, 50, 0}  // KING
-};
+// MVV-LVA removed in favor of SEE
 
 long long get_time_ms() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
@@ -44,38 +41,28 @@ void check_time() {
     }
 }
 
-int score_move(Board &board, Move m, Move hash_move, int depth) {
+int score_move(Board &board, Move m, Move hash_move, int depth, Move prev_move) {
     if (m.move == hash_move.move) { return 1000000; }
     if (m.is_capture()) {
-        int attacker = PIECE_NONE;
-        for (int p = PAWN; p <= KING; p++) {
-            if ((board.piece_bb[p] & board.color_bb[board.side_to_move]) & (1ULL << m.from())) {
-                attacker = p;
-                break;
-            }
-        }
-        int victim = PIECE_NONE;
-        for (int p = PAWN; p <= KING; p++) {
-            if ((board.piece_bb[p] & board.color_bb[1 - board.side_to_move]) & (1ULL << m.to())) {
-                victim = p;
-                break;
-            }
-        }
-        if (attacker != PIECE_NONE && victim != PIECE_NONE) { return 100000 + mvv_lva[attacker][victim]; }
-        return 100000;
+        int see_score = see(board, m);
+        if (see_score >= 0)
+            return 100000 + see_score; // Good/Equal captures
+        else
+            return 50000 + see_score; // Bad captures
     }
 
-    // Quiet moves: Killer and History heuristics
+    // Quiet moves: Killer, Countermove, and History heuristics
     if (depth >= 0 && depth < 64) {
         if (m.move == info.killer_moves[depth][0].move) return 90000;
+        if (prev_move.move != 0 && m.move == info.countermoves[prev_move.from()][prev_move.to()].move) return 85000;
         if (m.move == info.killer_moves[depth][1].move) return 80000;
     }
     return info.history_table[board.side_to_move][m.from()][m.to()];
 }
 
-void sort_moves(Board &board, std::vector<Move> &moves, Move hash_move, int depth) {
+void sort_moves(Board &board, std::vector<Move> &moves, Move hash_move, int depth, Move prev_move) {
     std::vector<int> scores(moves.size());
-    for (size_t i = 0; i < moves.size(); i++) { scores[i] = score_move(board, moves[i], hash_move, depth); }
+    for (size_t i = 0; i < moves.size(); i++) { scores[i] = score_move(board, moves[i], hash_move, depth, prev_move); }
     for (size_t i = 1; i < moves.size(); i++) {
         int j = i;
         while (j > 0 && scores[j - 1] < scores[j]) {
@@ -109,14 +96,17 @@ int quiescence(Board &board, int alpha, int beta) {
     std::vector<Move> moves = MoveGen::generate_pseudo_legal_moves(board);
     std::vector<Move> captures;
     for (Move m : moves) {
-        if (m.is_capture()) {
+        if (m.is_capture() || m.promoted() == QUEEN) {
+            // Prune bad captures in Quiescence Search
+            if (m.promoted() != QUEEN && see(board, m) < 0) continue;
+
             board.make_move(m);
             if (!board.in_check(static_cast<Color>(1 - board.side_to_move))) captures.push_back(m);
             board.unmake_move(m);
         }
     }
 
-    sort_moves(board, captures, Move(), 0);
+    sort_moves(board, captures, Move(), 0, Move());
 
     for (Move m : captures) {
         board.make_move(m);
@@ -134,7 +124,8 @@ int quiescence(Board &board, int alpha, int beta) {
     return alpha;
 }
 
-int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) {
+int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, Move excluded_move = Move(),
+            Move prev_move = Move()) {
     check_time();
     if (global_stop) return 0;
     info.nodes++;
@@ -151,7 +142,7 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
     // Internal Iterative Deepening (IID)
     bool is_pv = (beta - alpha > 1);
     if (depth >= 4 && hash_move.move == 0 && !is_null && !in_check && is_pv) {
-        negamax(board, depth - 2, alpha, beta, is_null);
+        negamax(board, depth - 2, alpha, beta, is_null, Move(), prev_move);
         TT.probe(board.hash_key, 0, alpha, beta, tt_score, hash_move);
     }
 
@@ -163,8 +154,26 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
 
     int static_eval = evaluate(board);
 
+    // Singular Extension
+    bool singular_extension = false;
+    if (depth >= 8 && hash_move.move != 0 && !is_null && !in_check && excluded_move.move == 0 &&
+        std::abs(beta) < 40000) {
+        int rBeta = alpha - 50;
+        int rDepth = depth / 2;
+        int se_score = negamax(board, rDepth, rBeta - 1, rBeta, false, hash_move, prev_move);
+        if (se_score < rBeta) { singular_extension = true; }
+    }
+
+    // ProbCut (Multi-Cut)
+    if (depth >= 5 && !in_check && !is_null && excluded_move.move == 0 && std::abs(beta) < 40000) {
+        int pc_beta = beta + 200;
+        int pc_depth = depth - 4;
+        int pc_score = negamax(board, pc_depth, pc_beta - 1, pc_beta, false, Move(), prev_move);
+        if (pc_score >= pc_beta) { return pc_beta; }
+    }
+
     // Reverse Futility Pruning (Static Null Move Pruning)
-    if (depth <= 3 && !in_check && !is_null && abs(beta) < 40000) {
+    if (depth <= 3 && !in_check && !is_null && std::abs(beta) < 40000) {
         int rfp_margin = 120 * depth;
         if (static_eval - rfp_margin >= beta) {
             return static_eval; // or beta
@@ -172,19 +181,19 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
     }
 
     // Null Move Pruning
-    if (depth >= 3 && !in_check && !is_null) {
+    if (depth >= 3 && !in_check && !is_null && excluded_move.move == 0) {
         uint64_t non_pawn_pieces = board.color_bb[board.side_to_move] & ~(board.piece_bb[PAWN] | board.piece_bb[KING]);
         if (non_pawn_pieces) {
             board.make_null_move();
             int R = (depth > 6) ? 3 : 2;
-            int null_score = -negamax(board, depth - 1 - R, -beta, -beta + 1, true);
+            int null_score = -negamax(board, depth - 1 - R, -beta, -beta + 1, true, Move(), Move());
             board.unmake_null_move();
             if (global_stop) return 0;
             if (null_score >= beta) return beta;
         }
     }
 
-    sort_moves(board, moves, hash_move, depth);
+    sort_moves(board, moves, hash_move, depth, prev_move);
 
     int flag = TT_ALPHA;
     int best_score = -50000;
@@ -192,12 +201,14 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
 
     // Futility Pruning
     bool f_prune = false;
-    if (depth <= 3 && !in_check && abs(alpha) < 40000) {
+    if (depth <= 3 && !in_check && std::abs(alpha) < 40000) {
         if (static_eval + 150 * depth <= alpha) { f_prune = true; }
     }
 
     int moves_searched = 0;
     for (Move m : moves) {
+        if (m.move != 0 && m.move == excluded_move.move) continue;
+
         // Futility Pruning: skip quiet moves if we are far behind
         if (f_prune && moves_searched > 0 && !m.is_capture() && m.promoted() == PIECE_NONE &&
             !board.in_check(static_cast<Color>(1 - board.side_to_move))) {
@@ -207,29 +218,34 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
         board.make_move(m);
         int score;
 
+        int ext = (m.move == hash_move.move && singular_extension) ? 1 : 0;
+        int new_depth = depth - 1 + ext;
+
         // Late Move Reductions (LMR)
         bool is_quiet = !m.is_capture() && m.promoted() == PIECE_NONE;
 
-        if (depth >= 3 && moves_searched >= 3 && is_quiet && !in_check) {
+        if (new_depth >= 3 && moves_searched >= 3 && is_quiet && !in_check && ext == 0) {
             bool gives_check = board.in_check(board.side_to_move);
             if (!gives_check) {
                 int R = (moves_searched > 6) ? 2 : 1;
-                score = -negamax(board, depth - 1 - R, -alpha - 1, -alpha);
+                score = -negamax(board, new_depth - R, -alpha - 1, -alpha, false, Move(), m);
                 if (score > alpha && score < beta) {
                     // Re-search at full depth and full window
-                    score = -negamax(board, depth - 1, -beta, -alpha);
+                    score = -negamax(board, new_depth, -beta, -alpha, false, Move(), m);
                 }
             } else {
-                score = -negamax(board, depth - 1, -alpha - 1, -alpha);
-                if (score > alpha && score < beta) { score = -negamax(board, depth - 1, -beta, -alpha); }
+                score = -negamax(board, new_depth, -alpha - 1, -alpha, false, Move(), m);
+                if (score > alpha && score < beta) {
+                    score = -negamax(board, new_depth, -beta, -alpha, false, Move(), m);
+                }
             }
         } else if (moves_searched == 0) {
             // PV Node
-            score = -negamax(board, depth - 1, -beta, -alpha);
+            score = -negamax(board, new_depth, -beta, -alpha, false, Move(), m);
         } else {
             // PVS Zero Window Search
-            score = -negamax(board, depth - 1, -alpha - 1, -alpha);
-            if (score > alpha && score < beta) { score = -negamax(board, depth - 1, -beta, -alpha); }
+            score = -negamax(board, new_depth, -alpha - 1, -alpha, false, Move(), m);
+            if (score > alpha && score < beta) { score = -negamax(board, new_depth, -beta, -alpha, false, Move(), m); }
         }
 
         board.unmake_move(m);
@@ -253,6 +269,7 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
                     info.killer_moves[depth][0] = m;
                 }
                 info.history_table[board.side_to_move][m.from()][m.to()] += depth * depth;
+                if (prev_move.move != 0) { info.countermoves[prev_move.from()][prev_move.to()] = m; }
             }
             TT.store(board.hash_key, depth, beta, TT_BETA, m);
             return beta;
@@ -281,7 +298,7 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
         std::vector<Move> moves = MoveGen::generate_legal_moves(board);
         if (moves.empty()) break;
 
-        sort_moves(board, moves, hash_move, depth);
+        sort_moves(board, moves, hash_move, depth, Move());
 
         Move best_move_current = moves[0];
         int best_score = -50000;
@@ -304,10 +321,12 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
                 int score;
 
                 if (moves_searched == 0) {
-                    score = -negamax(board, depth - 1, -beta, -alpha);
+                    score = -negamax(board, depth - 1, -beta, -alpha, false, Move(), m);
                 } else {
-                    score = -negamax(board, depth - 1, -alpha - 1, -alpha);
-                    if (score > alpha && score < beta) { score = -negamax(board, depth - 1, -beta, -alpha); }
+                    score = -negamax(board, depth - 1, -alpha - 1, -alpha, false, Move(), m);
+                    if (score > alpha && score < beta) {
+                        score = -negamax(board, depth - 1, -beta, -alpha, false, Move(), m);
+                    }
                 }
 
                 board.unmake_move(m);

@@ -14,6 +14,7 @@ struct SearchInfo {
 
     Move killer_moves[64][2];     // [depth][slot]
     int history_table[2][64][64]; // [color][from][to]
+    Move countermoves[64][64];    // [prev_move.from()][prev_move.to()]
 };
 
 Move search(Board board, int depth_limit, long long time_limit_ms);
