@@ -11,6 +11,20 @@ on:
 jobs:
   elo-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Baseline (All Off)"
+            options: "option.UseSEE=false option.UseSingularExtensions=false option.UseCountermove=false option.UseProbCut=false"
+          - name: "Only SEE"
+            options: "option.UseSEE=true option.UseSingularExtensions=false option.UseCountermove=false option.UseProbCut=false"
+          - name: "Only Singular Extensions"
+            options: "option.UseSEE=false option.UseSingularExtensions=true option.UseCountermove=false option.UseProbCut=false"
+          - name: "Only Countermove"
+            options: "option.UseSEE=false option.UseSingularExtensions=false option.UseCountermove=true option.UseProbCut=false"
+          - name: "Only ProbCut"
+            options: "option.UseSEE=false option.UseSingularExtensions=false option.UseCountermove=false option.UseProbCut=true"
 
     steps:
     - name: Checkout PR branch
@@ -55,12 +69,12 @@ jobs:
         python3 make.py
         sudo mv c-chess-cli /usr/local/bin/cutechess-cli
 
-    - name: Run Match
+    - name: Run Match - ${{ matrix.name }}
       run: |
         # Play games using SPRT (Sequential Probability Ratio Test)
         # elo0=0, elo1=10: fails if PR is worse, passes if equal or better
         cutechess-cli \
-          -engine cmd=./BlunderBot-pr name=PR-Version \
+          -engine cmd=./BlunderBot-pr name="PR-Version (${{ matrix.name }})" ${{ matrix.options }} \
           -engine cmd=./BlunderBot-main name=Main-Version \
           -each tc=0:10+0.1 option.Threads=1 \
           -rounds 250 -games 2 -repeat \
