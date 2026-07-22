@@ -19,9 +19,7 @@ extern int num_threads; // Defined in uci.cpp
 
 Piece get_piece_on(const Board &board, int sq) {
     for (int p = PAWN; p <= KING; p++) {
-        if (Utils::test_bit(board.piece_bb[p], sq)) {
-            return static_cast<Piece>(p);
-        }
+        if (Utils::test_bit(board.piece_bb[p], sq)) { return static_cast<Piece>(p); }
     }
     return PIECE_NONE;
 }
@@ -76,7 +74,9 @@ int score_move(Board &board, Move m, Move hash_move, int depth, Move prev_move) 
     // Quiet moves: Killer, Countermove, and History heuristics
     if (depth >= 0 && depth < 64) {
         if (m.move == info.killer_moves[depth][0].move) return 90000;
-        if (use_countermove && prev_move.move != 0 && m.move == info.countermoves[prev_move.from()][prev_move.to()].move) return 85000;
+        if (use_countermove && prev_move.move != 0 &&
+            m.move == info.countermoves[prev_move.from()][prev_move.to()].move)
+            return 85000;
         if (m.move == info.killer_moves[depth][1].move) return 80000;
     }
     return info.history_table[board.side_to_move][m.from()][m.to()];
@@ -178,8 +178,8 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
 
     // Singular Extension
     bool singular_extension = false;
-    if (use_singular_extensions && depth >= 8 && hash_move.move != 0 && !is_null && !in_check && excluded_move.move == 0 &&
-        std::abs(beta) < 40000) {
+    if (use_singular_extensions && depth >= 8 && hash_move.move != 0 && !is_null && !in_check &&
+        excluded_move.move == 0 && std::abs(beta) < 40000) {
         int rBeta = alpha - 50;
         int rDepth = depth / 2;
         int se_score = negamax(board, rDepth, rBeta - 1, rBeta, false, hash_move, prev_move);
