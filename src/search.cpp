@@ -209,13 +209,19 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false) 
 
         // Late Move Reductions (LMR)
         bool is_quiet = !m.is_capture() && m.promoted() == PIECE_NONE;
-        bool gives_check = board.in_check(board.side_to_move);
-        if (depth >= 3 && moves_searched >= 3 && is_quiet && !in_check && !gives_check) {
-            int R = (moves_searched > 6) ? 2 : 1;
-            score = -negamax(board, depth - 1 - R, -alpha - 1, -alpha);
-            if (score > alpha && score < beta) {
-                // Re-search at full depth and full window
-                score = -negamax(board, depth - 1, -beta, -alpha);
+
+        if (depth >= 3 && moves_searched >= 3 && is_quiet && !in_check) {
+            bool gives_check = board.in_check(board.side_to_move);
+            if (!gives_check) {
+                int R = (moves_searched > 6) ? 2 : 1;
+                score = -negamax(board, depth - 1 - R, -alpha - 1, -alpha);
+                if (score > alpha && score < beta) {
+                    // Re-search at full depth and full window
+                    score = -negamax(board, depth - 1, -beta, -alpha);
+                }
+            } else {
+                score = -negamax(board, depth - 1, -alpha - 1, -alpha);
+                if (score > alpha && score < beta) { score = -negamax(board, depth - 1, -beta, -alpha); }
             }
         } else if (moves_searched == 0) {
             // PV Node
