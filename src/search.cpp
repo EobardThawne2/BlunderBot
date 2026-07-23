@@ -71,6 +71,7 @@ int score_move(Board &board, Move m, Move hash_move, int depth, Move prev_move) 
                 return 50000 + see_score; // Bad captures
         } else {
             Piece victim = get_piece_on(board, m.to());
+            if (m.is_en_passant()) victim = PAWN;
             Piece attacker = get_piece_on(board, m.from());
             if (attacker != PIECE_NONE && victim != PIECE_NONE) { return 100000 + mvv_lva[attacker][victim]; }
             return 100000;
@@ -124,9 +125,9 @@ int quiescence(Board &board, int alpha, int beta) {
     std::vector<Move> moves = MoveGen::generate_pseudo_legal_moves(board);
     std::vector<Move> captures;
     for (Move m : moves) {
-        if (m.is_capture()) {
+        if (m.is_capture() || m.promoted() == QUEEN) {
             // Prune bad captures in Quiescence Search
-            if (use_see && see(board, m) < 0) continue;
+            if (use_see && m.promoted() != QUEEN && see(board, m) < 0) continue;
 
             board.make_move(m);
             if (!board.in_check(static_cast<Color>(1 - board.side_to_move))) captures.push_back(m);

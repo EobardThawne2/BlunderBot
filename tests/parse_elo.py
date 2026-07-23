@@ -22,7 +22,7 @@ def main():
         
     # Check if H1 was accepted (PR is better)
     if "H1 was accepted" in content:
-        print("SPRT Passed: H1 was accepted. The new code is statistically proven to be better.")
+        print("SPRT Passed: H1 was accepted. The new code is statistically proven to be equal or better.")
         sys.exit(0)
         
     # If neither, the test hit the max game limit. We must parse the LOS (Likelihood of Superiority).
