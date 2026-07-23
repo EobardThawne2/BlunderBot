@@ -26,6 +26,7 @@ set(SOURCES
     src/book.cpp
     src/misc.cpp
     src/see.cpp
+    src/gendata.cpp
 )
 
 set(MAKE_BOOK_SOURCES

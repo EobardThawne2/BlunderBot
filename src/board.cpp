@@ -88,6 +88,76 @@ void Board::parse_fen(const std::string &fen) {
     hash_key = generate_hash(*this);
 }
 
+std::string Board::get_fen() const {
+    std::string fen = "";
+    int empty = 0;
+    for (int r = 7; r >= 0; r--) {
+        for (int f = 0; f < 8; f++) {
+            int sq = r * 8 + f;
+            int piece = PIECE_NONE;
+            int color = WHITE;
+            for (int p = PAWN; p <= KING; p++) {
+                if (Utils::test_bit(piece_bb[p] & color_bb[WHITE], sq)) {
+                    piece = p;
+                    color = WHITE;
+                    break;
+                }
+                if (Utils::test_bit(piece_bb[p] & color_bb[BLACK], sq)) {
+                    piece = p;
+                    color = BLACK;
+                    break;
+                }
+            }
+            if (piece == PIECE_NONE) {
+                empty++;
+            } else {
+                if (empty > 0) {
+                    fen += std::to_string(empty);
+                    empty = 0;
+                }
+                char p_char = '?';
+                if (piece == PAWN)
+                    p_char = 'p';
+                else if (piece == KNIGHT)
+                    p_char = 'n';
+                else if (piece == BISHOP)
+                    p_char = 'b';
+                else if (piece == ROOK)
+                    p_char = 'r';
+                else if (piece == QUEEN)
+                    p_char = 'q';
+                else if (piece == KING)
+                    p_char = 'k';
+                if (color == WHITE) p_char = std::toupper(p_char);
+                fen += p_char;
+            }
+        }
+        if (empty > 0) {
+            fen += std::to_string(empty);
+            empty = 0;
+        }
+        if (r > 0) fen += "/";
+    }
+    fen += (side_to_move == WHITE) ? " w " : " b ";
+    std::string castling = "";
+    if (castling_rights & WK) castling += "K";
+    if (castling_rights & WQ) castling += "Q";
+    if (castling_rights & BK) castling += "k";
+    if (castling_rights & BQ) castling += "q";
+    if (castling == "") castling = "-";
+    fen += castling + " ";
+    if (en_passant != SQ_NONE) {
+        char file = 'a' + (en_passant % 8);
+        char rank = '1' + (en_passant / 8);
+        fen += file;
+        fen += rank;
+    } else {
+        fen += "-";
+    }
+    fen += " " + std::to_string(half_move_clock) + " " + std::to_string(1 + history_ply / 2);
+    return fen;
+}
+
 void Board::print_board() const {
     std::cout << "\n";
     for (int rank = 7; rank >= 0; --rank) {

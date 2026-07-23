@@ -29,3 +29,6 @@ venv/
 download_syzygy.py
 setup.py
 sygzygy/
+
+# Training Data
+*.epd

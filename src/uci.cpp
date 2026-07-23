@@ -3,6 +3,7 @@
 #include "movegen.h"
 #include "tt.h"
 #include "book.h"
+#include "gendata.h"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -158,6 +159,12 @@ void uci_loop() {
             } else {
                 std::cout << "DEBUG: perft depth parsing failed\n";
             }
+        } else if (token == "gendata") {
+            int games = 10;
+            int depth = 5;
+            if (ss >> token) games = std::stoi(token);
+            if (ss >> token) depth = std::stoi(token);
+            generate_data(games, depth);
         }
     }
 }

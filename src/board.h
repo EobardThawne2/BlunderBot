@@ -30,6 +30,7 @@ class Board {
 
     Board();
     void parse_fen(const std::string &fen);
+    std::string get_fen() const;
     void print_board() const;
     void print_board_tui() const;
 
