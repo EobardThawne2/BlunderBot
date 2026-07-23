@@ -84,8 +84,7 @@ int score_move(Board &board, Move m, Move hash_move, int depth, Move prev_move) 
         if (m.move == info.killer_moves[depth][0].move) return 90000;
         if (m.move == info.killer_moves[depth][1].move) return 80000;
     }
-    if (use_countermove && prev_move.move != 0 &&
-        m.move == info.countermoves[prev_move.from()][prev_move.to()].move) {
+    if (use_countermove && prev_move.move != 0 && m.move == info.countermoves[prev_move.from()][prev_move.to()].move) {
         return 50000 + history_score;
     }
     return history_score;
@@ -300,14 +299,12 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
                     info.killer_moves[depth][0] = m;
                 }
                 int bonus = depth * depth;
-                int& hist = info.history_table[board.side_to_move][m.from()][m.to()];
+                int &hist = info.history_table[board.side_to_move][m.from()][m.to()];
                 hist += bonus;
                 if (hist > 10000) {
                     for (int c = 0; c < 2; c++) {
                         for (int i = 0; i < 64; i++) {
-                            for (int j = 0; j < 64; j++) {
-                                info.history_table[c][i][j] >>= 1;
-                            }
+                            for (int j = 0; j < 64; j++) { info.history_table[c][i][j] >>= 1; }
                         }
                     }
                 }
