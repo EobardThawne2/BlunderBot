@@ -61,32 +61,34 @@ void check_time() {
 }
 
 int score_move(Board &board, Move m, Move hash_move, int depth, Move prev_move) {
-    if (m.move == hash_move.move) { return 1000000; }
+    if (m.move == hash_move.move) { return 10000000; }
     if (m.is_capture()) {
         if (use_see) {
             int see_score = see(board, m);
             if (see_score >= 0)
-                return 100000 + see_score; // Good/Equal captures
+                return 2000000 + see_score; // Good/Equal captures
             else
-                return 50000 + see_score; // Bad captures
+                return 50000 + see_score; // Bad captures below killers
         } else {
             Piece victim = get_piece_on(board, m.to());
             if (m.is_en_passant()) victim = PAWN;
             Piece attacker = get_piece_on(board, m.from());
-            if (attacker != PIECE_NONE && victim != PIECE_NONE) { return 100000 + mvv_lva[attacker][victim]; }
-            return 100000;
+            if (attacker != PIECE_NONE && victim != PIECE_NONE) { return 2000000 + mvv_lva[attacker][victim]; }
+            return 2000000;
         }
     }
 
     // Quiet moves: Killer, Countermove, and History heuristics
+    int history_score = info.history_table[board.side_to_move][m.from()][m.to()];
     if (depth >= 0 && depth < 64) {
         if (m.move == info.killer_moves[depth][0].move) return 90000;
-        if (use_countermove && prev_move.move != 0 &&
-            m.move == info.countermoves[prev_move.from()][prev_move.to()].move)
-            return 85000;
         if (m.move == info.killer_moves[depth][1].move) return 80000;
     }
-    return info.history_table[board.side_to_move][m.from()][m.to()];
+    if (use_countermove && prev_move.move != 0 &&
+        m.move == info.countermoves[prev_move.from()][prev_move.to()].move) {
+        return 50000 + history_score;
+    }
+    return history_score;
 }
 
 void sort_moves(Board &board, std::vector<Move> &moves, Move hash_move, int depth, Move prev_move) {
@@ -297,7 +299,18 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
                     info.killer_moves[depth][1] = info.killer_moves[depth][0];
                     info.killer_moves[depth][0] = m;
                 }
-                info.history_table[board.side_to_move][m.from()][m.to()] += depth * depth;
+                int bonus = depth * depth;
+                int& hist = info.history_table[board.side_to_move][m.from()][m.to()];
+                hist += bonus;
+                if (hist > 10000) {
+                    for (int c = 0; c < 2; c++) {
+                        for (int i = 0; i < 64; i++) {
+                            for (int j = 0; j < 64; j++) {
+                                info.history_table[c][i][j] >>= 1;
+                            }
+                        }
+                    }
+                }
                 if (use_countermove && prev_move.move != 0) { info.countermoves[prev_move.from()][prev_move.to()] = m; }
             }
             TT.store(board.hash_key, depth, beta, TT_BETA, m);
