@@ -39,7 +39,15 @@ void clear_heuristics() {
     }
 }
 
-// MVV-LVA removed in favor of SEE
+// MVV-LVA [Attacker][Victim]
+const int mvv_lva[6][6] = {
+    {15, 25, 35, 45, 55, 0}, // PAWN
+    {14, 24, 34, 44, 54, 0}, // KNIGHT
+    {13, 23, 33, 43, 53, 0}, // BISHOP
+    {12, 22, 32, 42, 52, 0}, // ROOK
+    {11, 21, 31, 41, 51, 0}, // QUEEN
+    {10, 20, 30, 40, 50, 0}  // KING
+};
 
 long long get_time_ms() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
@@ -62,12 +70,10 @@ int score_move(Board &board, Move m, Move hash_move, int depth, Move prev_move) 
             else
                 return 50000 + see_score; // Bad captures
         } else {
-            int victim_vals[] = {100, 300, 300, 500, 900, 0};
-            int attacker_vals[] = {100, 300, 300, 500, 900, 10000};
             Piece victim = get_piece_on(board, m.to());
             Piece attacker = get_piece_on(board, m.from());
-            if (victim == PIECE_NONE) victim = PAWN;
-            return 100000 + victim_vals[victim] * 10 - attacker_vals[attacker];
+            if (attacker != PIECE_NONE && victim != PIECE_NONE) { return 100000 + mvv_lva[attacker][victim]; }
+            return 100000;
         }
     }
 
@@ -118,9 +124,9 @@ int quiescence(Board &board, int alpha, int beta) {
     std::vector<Move> moves = MoveGen::generate_pseudo_legal_moves(board);
     std::vector<Move> captures;
     for (Move m : moves) {
-        if (m.is_capture() || m.promoted() == QUEEN) {
+        if (m.is_capture()) {
             // Prune bad captures in Quiescence Search
-            if (use_see && m.promoted() != QUEEN && see(board, m) < 0) continue;
+            if (use_see && see(board, m) < 0) continue;
 
             board.make_move(m);
             if (!board.in_check(static_cast<Color>(1 - board.side_to_move))) captures.push_back(m);
@@ -246,7 +252,7 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
         // Late Move Reductions (LMR)
         bool is_quiet = !m.is_capture() && m.promoted() == PIECE_NONE;
 
-        if (new_depth >= 3 && moves_searched >= 3 && is_quiet && !in_check && ext == 0) {
+        if (depth >= 3 && moves_searched >= 3 && is_quiet && !in_check && ext == 0) {
             bool gives_check = board.in_check(board.side_to_move);
             if (!gives_check) {
                 int R = (moves_searched > 6) ? 2 : 1;
