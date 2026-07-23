@@ -8,6 +8,7 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/elo-test.yml'
       - 'tests/**'
+  workflow_dispatch:
 
 jobs:
   elo-test:
