@@ -359,9 +359,7 @@ void Board::make_move(Move move) {
             }
         }
     }
-    if (history_ply < 2048) {
-        history[history_ply].captured_piece = captured_piece;
-    }
+    if (history_ply < 2048) { history[history_ply].captured_piece = captured_piece; }
     history_ply++;
 
     Utils::clear_bit(piece_bb[moved_piece], from);
