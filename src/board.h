@@ -25,7 +25,7 @@ class Board {
     int full_move_number;
     uint64_t hash_key;
 
-    BoardState history[512];
+    BoardState history[2048];
     int history_ply;
 
     Board();

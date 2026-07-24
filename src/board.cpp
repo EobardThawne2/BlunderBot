@@ -323,10 +323,12 @@ bool Board::in_check(Color side) const {
 }
 
 void Board::make_move(Move move) {
-    history[history_ply].castling_rights = castling_rights;
-    history[history_ply].en_passant = en_passant;
-    history[history_ply].half_move_clock = half_move_clock;
-    history[history_ply].hash_key = hash_key;
+    if (history_ply < 2048) {
+        history[history_ply].castling_rights = castling_rights;
+        history[history_ply].en_passant = en_passant;
+        history[history_ply].half_move_clock = half_move_clock;
+        history[history_ply].hash_key = hash_key;
+    }
 
     int from = move.from();
     int to = move.to();
@@ -357,7 +359,9 @@ void Board::make_move(Move move) {
             }
         }
     }
-    history[history_ply].captured_piece = captured_piece;
+    if (history_ply < 2048) {
+        history[history_ply].captured_piece = captured_piece;
+    }
     history_ply++;
 
     Utils::clear_bit(piece_bb[moved_piece], from);

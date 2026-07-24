@@ -56,6 +56,11 @@ void generate_data(int num_games, int depth) {
                 break;
             }
 
+            if (board.history_ply >= 2000) {
+                result = 0; // Prevent infinite games
+                break;
+            }
+
             int reps = 0;
             for (int i = std::max(0, board.history_ply - board.half_move_clock); i < board.history_ply; i++) {
                 if (board.history[i].hash_key == board.hash_key) reps++;
