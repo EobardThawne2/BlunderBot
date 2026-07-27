@@ -52,14 +52,16 @@ jobs:
         cd pr-branch
         cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build --config Release
-        if [ -f build/make_book ]; then build/make_book data/openings.txt blunderbot_book.bin; cp blunderbot_book.bin ../; fi
+        if [ -f build/make_book ]; then build/make_book data/openings.txt blunderbot_book.bin; fi
+        mv build/BlunderBot BlunderBot
 
     - name: Build Main Engine
       run: |
         cd main-branch
         cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         cmake --build build --config Release
-        if [ -f build/make_book ]; then build/make_book data/openings.txt blunderbot_book_main.bin; cp blunderbot_book_main.bin ../blunderbot_book.bin; fi
+        if [ -f build/make_book ]; then build/make_book data/openings.txt blunderbot_book.bin; fi
+        mv build/BlunderBot BlunderBot
 
     - name: Install Match Runner
       run: |
@@ -73,8 +75,8 @@ jobs:
         # Play games using SPRT (Sequential Probability Ratio Test)
         # elo0=0, elo1=10: fails if PR is worse, passes if equal or better
         cutechess-cli \
-          -engine cmd=./build/BlunderBot dir=pr-branch name="PR-Version (${{ matrix.name }})" ${{ matrix.options }} \
-          -engine cmd=./build/BlunderBot dir=main-branch name=Main-Version \
+          -engine cmd=pr-branch/BlunderBot name="PR-Version (${{ matrix.name }})" ${{ matrix.options }} \
+          -engine cmd=main-branch/BlunderBot name=Main-Version \
           -each tc=0:10+0.1 option.Threads=1 \
           -rounds 250 -games 2 -repeat \
           -sprt elo0=-10 elo1=0 alpha=0.05 beta=0.05 \
