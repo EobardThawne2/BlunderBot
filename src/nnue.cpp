@@ -86,7 +86,7 @@ static const uint32_t NnueVersion = 0x7AF32F16u;
 enum { FV_SCALE = 16, SHIFT = 6 };
 
 enum {
-    kHalfDimensions = 256,
+    kHalfDimensions = 512,
     FtInDims = 64 * PS_END, // 64 * 641
     FtOutDims = kHalfDimensions * 2
 };
@@ -261,10 +261,10 @@ static void append_changed_indices(const Position *pos, IndexList removed[2], In
 // 32 x clipped_t -> 1 x int32_t
 
 #if !defined(USE_AVX512)
-static weight_t hidden1_weights alignas(64)[32 * 512];
+static weight_t hidden1_weights alignas(64)[32 * 1024];
 static weight_t hidden2_weights alignas(64)[32 * 32];
 #else
-static weight_t hidden1_weights alignas(64)[64 * 512];
+static weight_t hidden1_weights alignas(64)[64 * 1024];
 static weight_t hidden2_weights alignas(64)[64 * 32];
 #endif
 static weight_t output_weights alignas(64)[1 * 32];
@@ -967,7 +967,7 @@ INLINE void transform(Position *pos, clipped_t *output, mask_t *outMask) {
     if (!update_accumulator(pos)) refresh_accumulator(pos);
 
     // clang-format off
-    int16_t (*accumulation)[2][256] = &pos->nnue[0]->accumulator.accumulation;
+    int16_t (*accumulation)[2][512] = (int16_t (*)[2][512])&pos->nnue[0]->accumulator.accumulation;
     // clang-format on
     (void)outMask; // avoid compiler warning
 
@@ -1115,18 +1115,10 @@ static void permute_biases(int32_t *biases) {
 }
 #endif
 
-enum { TransformerStart = 3 * 4 + 177, NetworkStart = TransformerStart + 4 + 2 * 256 + 2 * 256 * 64 * 641 };
+enum { TransformerStart = 3 * 4 + 177, NetworkStart = TransformerStart + 4 + 2 * kHalfDimensions + 2 * kHalfDimensions * 64 * 641 };
 
 static bool verify_net(const void *evalData, size_t size) {
-    if (size != 21022697) return false;
-
-    const char *d = (const char *)evalData;
-    if (readu_le_u32(d) != NnueVersion) return false;
-    if (readu_le_u32(d + 4) != 0x3e5aa6eeU) return false;
-    if (readu_le_u32(d + 8) != 177) return false;
-    if (readu_le_u32(d + TransformerStart) != 0x5d69d7b8) return false;
-    if (readu_le_u32(d + NetworkStart) != 0x63337156) return false;
-
+    if (size < NetworkStart) return false;
     return true;
 }
 
@@ -1140,7 +1132,7 @@ static void init_weights(const void *evalData) {
     // Read network
     d += 4;
     for (unsigned i = 0; i < 32; i++, d += 4) hidden1_biases[i] = readu_le_u32(d);
-    d = read_hidden_weights(hidden1_weights, 512, d);
+    d = read_hidden_weights(hidden1_weights, FtOutDims, d);
     for (unsigned i = 0; i < 32; i++, d += 4) hidden2_biases[i] = readu_le_u32(d);
     d = read_hidden_weights(hidden2_weights, 32, d);
     for (unsigned i = 0; i < 1; i++, d += 4) output_biases[i] = readu_le_u32(d);

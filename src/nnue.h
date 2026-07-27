@@ -47,7 +47,7 @@ typedef struct DirtyPiece {
 } DirtyPiece;
 
 typedef struct Accumulator {
-    alignas(64) int16_t accumulation[2][256];
+    alignas(64) int16_t accumulation[2][512];
     int computedAccumulation;
 } Accumulator;
 
