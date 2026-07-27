@@ -1115,7 +1115,10 @@ static void permute_biases(int32_t *biases) {
 }
 #endif
 
-enum { TransformerStart = 3 * 4 + 177, NetworkStart = TransformerStart + 4 + 2 * kHalfDimensions + 2 * kHalfDimensions * 64 * 641 };
+enum {
+    TransformerStart = 3 * 4 + 177,
+    NetworkStart = TransformerStart + 4 + 2 * kHalfDimensions + 2 * kHalfDimensions * 64 * 641
+};
 
 static bool verify_net(const void *evalData, size_t size) {
     if (size < NetworkStart) return false;
