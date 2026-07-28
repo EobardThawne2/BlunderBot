@@ -1,104 +1,101 @@
-# BlunderBot Chess Engine
+# BlunderBot Chess Engine Architecture
 
-BlunderBot is a modern, high-performance chess engine developed in C++20. Designed with a focus on modularity, raw execution speed, and adherence to modern chess programming paradigms, BlunderBot utilizes state-of-the-art evaluation techniques and highly optimized search algorithms.
+BlunderBot is an advanced, high-performance, Universal Chess Interface (UCI) compliant chess engine written in C++20. Engineered for strict modularity, raw execution speed, and adherence to modern chess programming paradigms, it integrates state-of-the-art heuristic search algorithms and a custom Efficiently Updatable Neural Network (NNUE) evaluation architecture.
 
-## Features & Architecture
-
-### Core Engine
-- **Language:** Written entirely in C++20 for maximum performance.
-- **Board Representation:** 64-bit Bitboards for rapid piece manipulation and state evaluation.
-- **Hashing:** Zobrist Hashing for efficient position tracking and Transposition Table (TT) lookups.
-- **Move Generation:** Utilizes Magic Bitboards to instantly resolve sliding piece attacks (Rooks/Bishops), entirely eliminating loop-based ray tracing overhead.
-
-### Search Algorithm (Alpha-Beta Negamax)
-BlunderBot implements a highly tuned Alpha-Beta Negamax search framework with the following enhancements:
-- **Transposition Table:** Caches bounds and best moves of previously evaluated positions to prevent redundant calculations.
-- **Move Ordering:** Highly optimized move ordering utilizing Hash Moves, MVV-LVA (Most Valuable Victim - Least Valuable Attacker) for captures, Killer Heuristic, and History Heuristic.
-- **Pruning & Reductions:**
-  - **Null Move Pruning (NMP):** Aggressively prunes branches where the side-to-move is overwhelmingly winning.
-  - **Late Move Reductions (LMR):** Dynamically reduces the search depth for historically poor moves, drastically increasing search speed.
-  - **Futility & Reverse Futility Pruning:** Prunes near-leaf nodes based on static evaluation bounds.
-- **Quiescence Search:** Extends the search horizon for forcing moves (captures) to prevent the horizon effect.
-- **Aspiration Windows:** Constrains the root search bounds to achieve massive beta-cutoffs.
-- **Lazy SMP:** Supports multithreaded evaluation by spawning asynchronous worker threads that share a global Transposition Table.
-
-### Evaluation Function
-- **NNUE Integration:** BlunderBot relies entirely on Efficiently Updatable Neural Networks (NNUE) for static evaluation. 
-- **Library:** Powered by the `nnue-probe` library, evaluating a half-kp architecture network (`nn-62ef826d1a6d.nnue`) natively on the CPU for extremely precise positional understanding.
-
-### Opening Book
-- **PolyGlot Support:** Native parsing of standard `.bin` PolyGlot opening books.
-- **Custom Compiler:** Includes a standalone `make_book` executable that compiles raw PGN/TXT opening lines into optimized binary formats during the build process.
-
-### Continuous Integration (CI/CD)
-- **Automated SPRT Testing:** Fully automated GitHub Actions pipeline (`elo-test.yml`) that validates every commit.
-- **Regression Testing:** Compiles the latest code and pits it against the stable `main` branch using `c-chess-cli` and Sequential Probability Ratio Testing (SPRT) to mathematically prove Elo gains.
+To interact with the latest deployment of the BlunderBot engine, visit:
+https://blunderbot-l52n.onrender.com/
 
 ---
 
-## Interfaces & Protocols
+## 1. Core Engine and Board Representation
 
-- **UCI Protocol:** Comprehensive support for the Universal Chess Interface (UCI) protocol, ensuring seamless integration with standard chess GUIs (e.g., Arena, Cute Chess).
-- **Command-Line Interface:** Native Terminal User Interface (TUI) for direct engine interaction.
-- **Web UI:** Asynchronous Python/FastAPI WebSocket server driving a browser-based frontend (`/server` and `/ui`).
+### 1.1 64-bit Bitboards
+The foundational data structure of BlunderBot is the 64-bit unsigned integer (`uint64_t`), representing a bitboard. BlunderBot maintains an array of bitboards for each piece type (Pawn, Knight, Bishop, Rook, Queen, King) and color (White, Black). This allows the engine to perform highly parallelized, vectorized piece operations using bitwise arithmetic and intrinsic CPU instructions:
+- `__builtin_popcountll`: Used to count the number of set bits (e.g., evaluating material count or mobility).
+- `__builtin_ctzll`: Used to find the index of the Least Significant 1-Bit (LS1B), enabling rapid serialization of bitboards into discrete piece coordinate lists.
 
----
+### 1.2 Move Generation
+BlunderBot utilizes a staged, pseudo-legal move generator to maximize node throughput. 
+- **Leaper Pieces (Knights, Kings):** Moves are generated using pre-calculated attack masks indexed by the piece's square.
+- **Pawn Mechanics:** Pawn pushes, double pushes, and attacks (including En Passant) are generated via bitwise shifts, heavily optimizing the most common moves on the board.
+- **Sliding Pieces (Rooks, Bishops, Queens):** BlunderBot leverages **Magic Bitboards**. By hashing the occupancy of the relevant blocker squares (multiplying by a pre-computed "magic number" and right-shifting), sliding piece attacks are resolved via a direct array lookup in O(1) constant time. This strictly eliminates the computationally expensive loop-based ray casting historically used in older engines.
+- **Legality Checking:** Moves are generated pseudo-legally (allowing moves that might leave the King in check). Legality is strictly verified immediately before the move is executed in the search tree, preventing the generation overhead for branches that are heavily pruned.
 
-## Build Instructions
-
-### System Requirements
-- **C++ Compiler:** GCC, Clang, or MSVC with C++20 support.
-- **CMake:** Version 3.10 or higher.
-- **Python:** Version 3.10+ (required only for the Web UI server).
-
-### Local C++ Compilation
-The native executable is built using CMake. This process will also automatically compile the opening book.
-
-```bash
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . --config Release
-```
-
-The resulting executable (`BlunderBot` or `BlunderBot.exe`) will be generated within the `build` directory alongside the required `.nnue` weights file and compiled `.bin` opening book.
+### 1.3 Zobrist Hashing
+Position states are tracked using 64-bit Zobrist Hashing. A unique, pseudo-random 64-bit integer is assigned to every possible piece-square combination, castling right, en passant file, and the side-to-move. As pieces move, the hash is incrementally updated via XOR operations. This hash serves as the primary key for the Transposition Table and allows mathematically precise detection of 3-fold repetitions and the 50-move rule.
 
 ---
 
-## Usage Guide
+## 2. Search Framework (Alpha-Beta Negamax)
 
-### UCI Mode (GUI Integration)
-Executing the engine without arguments initializes it in UCI mode. Point your preferred Chess GUI (like Arena or Cute Chess) to this executable.
-*Note: Ensure the `.nnue` weights file is in the same directory as the executable.*
+BlunderBot implements an iterative deepening Alpha-Beta Negamax search algorithm, augmented with Principal Variation Search (PVS). PVS assumes that the first move searched is the Principal Variation (the best move) and searches it with a full window. Subsequent moves are searched with a zero-window (null window) to prove they are worse; a full re-search is only triggered if the zero-window search fails high.
 
-```bash
-cd build
-./BlunderBot
-```
+### 2.1 The Transposition Table (TT)
+The Transposition Table is a highly optimized, lock-free hash map that caches search results. Each TT entry stores:
+- **Zobrist Key (Partial):** To verify collisions.
+- **Depth:** The search depth at which the position was evaluated.
+- **Score:** The static or backed-up evaluation score.
+- **Bound Type:** Exact, Lower Bound (Beta cutoff), or Upper Bound (Alpha cutoff).
+- **Best Move:** The move that yielded the highest score.
 
-### Terminal User Interface (TUI)
-To play against the engine directly in your terminal:
+Before expanding a node, BlunderBot probes the TT. If a valid entry exists with a depth greater than or equal to the current required depth, the search immediately returns the cached score, circumventing the entire subtree calculation.
 
-```bash
-cd build
-./BlunderBot tui
-```
-*(Windows: `.\BlunderBot.exe tui`)*
+### 2.2 Move Ordering
+The efficiency of Alpha-Beta pruning scales exponentially with the quality of move ordering. BlunderBot enforces a strict deterministic ordering schema to force beta-cutoffs as early as possible:
+1. **Hash Move:** The best move extracted from the TT. Statistically, this is the most likely move to cause a cutoff.
+2. **Winning Captures (SEE >= 0):** Captures and promotions are dynamically sorted using Static Exchange Evaluation (SEE), which simulates the sequence of captures on a target square to determine the net material gain/loss.
+3. **Killer Moves:** Up to two non-capturing quiet moves that caused a beta-cutoff in sibling nodes at the exact same ply are prioritized.
+4. **Countermoves:** A historical table indexed by `[piece][to_square]` of the opponent's previous move, returning a quiet move that logically counters the threat.
+5. **History Moves:** Quiet moves are dynamically sorted by a continuously updated History Table. Moves that cause cutoffs deeper in the search tree increment their historical weight, allowing the engine to mathematically learn which quiet maneuvers are effective in the current position.
+6. **Losing Captures (SEE < 0):** Captures that lose material are pushed to the absolute end of the evaluation queue.
 
-### Local Web UI (Python)
-If the engine is compiled locally and Python is installed, you can launch the WebSocket server to host the browser interface:
+### 2.3 Forward Pruning and Reductions
+To achieve extreme depth within modern time controls, BlunderBot aggressively prunes unpromising branches:
+- **Null Move Pruning (NMP):** Operates on the assumption that passing a turn (a null move) is the worst possible action. If the evaluation after a null move still exceeds beta, the opponent's threat is deemed insignificant, and the branch is pruned.
+- **Late Move Reductions (LMR):** Quiet moves ordered late in the sequence are assumed to be tactically flawed. Their search depth is logarithmically reduced based on the current nominal depth and their index in the move list. If the reduced search exceeds alpha, the move is re-searched at full depth.
+- **Futility Pruning:** If a node is near the horizon (Depth <= 2), and the static evaluation plus a mathematical margin falls significantly below alpha, the engine assumes recovery is impossible and prunes the node.
+- **Reverse Futility Pruning (Static NMP):** Evaluated at the pre-node expansion phase. If the static evaluation exceeds beta by a massive margin, the node returns immediately without generating moves.
+- **ProbCut:** Performs a highly aggressive, shallow search (typically depth - 4) with a significant beta margin. If this shallow search causes a cutoff, the main search is bypassed entirely.
 
-```bash
-pip install -r requirements.txt
-uvicorn server.server:app --host 127.0.0.1 --port 8000
-```
-Access the interface at `http://127.0.0.1:8000`.
+### 2.4 Search Extensions
+- **Singular Extensions:** When the Hash Move score exceeds the score of all alternative moves by a significant, pre-defined margin, it is classified as "singular" (forced). BlunderBot extends the search depth of singular moves by 1 ply, ensuring absolute tactical accuracy in forcing lines and mitigating the horizon effect.
+- **Quiescence Search (Q-Search):** Triggered when the nominal search depth reaches zero. Q-Search recursively generates and evaluates all forcing tactical sequences (captures and Queen promotions) until a statically "quiet" position is achieved. This ensures that the engine does not erroneously evaluate a position midway through a piece exchange.
 
-### Docker Container (Web Server)
-A pre-built Docker image is available on the GitHub Container Registry.
+---
 
-```bash
-docker pull ghcr.io/eobardthawne2/blunderbot:main
-docker run -p 8000:8000 ghcr.io/eobardthawne2/blunderbot:main
-```
-The web interface will be accessible at `http://localhost:8000`.
+## 3. Evaluation and Neural Architecture
+
+BlunderBot abandons traditional Hand-Crafted Evaluation (HCE) entirely, relying strictly on an Efficiently Updatable Neural Network (NNUE) for static positional assessment.
+
+### 3.1 Network Topology (HalfKP)
+The engine utilizes a custom `Blunderbot.nnue` weights file processed natively on the CPU via the `nnue-probe` library. 
+- **Input Layer:** The architecture employs a Half-King-Piece (HalfKP) mapping. The input vector consists of 41,024 discrete features, representing the relationship between the active King's square and every other piece on the board.
+- **Hidden Layers:** The network processes these features through highly optimized, densely connected hidden layers using clipped ReLU activations, dynamically calculating non-linear positional heuristics (e.g., King safety, pawn structure, piece activity) that are mathematically impossible to express in HCE.
+- **Incremental Updates:** Rather than recalculating the entire 41,024-feature input array from scratch at every leaf node, BlunderBot incrementally updates the network's accumulator during `make_move` and `unmake_move` operations. A single piece movement only updates the specific neural weights associated with the "from" and "to" squares, allowing NNUE to rival the speed of primitive HCE calculations.
+
+### 3.2 Game-Phase Shifting (The Three-Brain Model)
+To account for the wildly varying strategic priorities between the opening, middlegame, and endgame, BlunderBot implements a dynamic Game-Phase Shifting scalar.
+- The absolute game phase is calculated mathematically by summarizing the non-pawn material (or bit counts) currently active on the board.
+- The raw NNUE evaluation integer is then multiplied by a phase-dependent scalar. 
+- During high-material phases (opening/middlegame), the multiplier rests at 1.0. As material is depleted and the game transitions into an endgame scenario, the multiplier scales asymptotically up to 1.3. 
+- This forces the search algorithm to mathematically prioritize precision and absolute evaluation differences in endgames, where small advantages define the outcome.
+
+---
+
+## 4. Opening Book and PolyGlot Integration
+
+BlunderBot natively supports the binary PolyGlot `.bin` opening book format. 
+- The repository includes a standalone `make_book` C++ executable that mathematically compiles raw PGN strings into a highly compressed, Zobrist-indexed binary format during the CMake build sequence.
+- During the root search phase, if the current Zobrist hash matches an entry in the compiled `blunderbot_book.bin`, the engine immediately plays the pre-calculated theoretical move, completely bypassing the Negamax search tree and conserving computational resources for out-of-book middlegame positions.
+
+---
+
+## 5. Continuous Integration (CI/CD) and Automated Testing
+
+Strict statistical rigor governs the BlunderBot codebase. A fully automated GitHub Actions CI/CD pipeline validates every commit to the repository.
+
+### 5.1 Automated SPRT Regression
+- Every pull request initiates an ablation test matrix pitting the modified `pr-branch` executable against the stable `main` baseline.
+- `c-chess-cli` acts as the deterministic match runner, enforcing strict time controls and zero-variance concurrency.
+- Matches are mathematically evaluated using the Sequential Probability Ratio Test (SPRT). The testing parameters are defined as `elo0=-10` and `elo1=0` with error bounds `alpha=0.05` and `beta=0.05`. 
+- For code changes to be merged, they must mathematically demonstrate equal or greater Elo strength (i.e., failing the null hypothesis that the new engine is worse) against the identical baseline constraint. Heuristic ablation tests enforce symmetry by selectively disabling UCI configuration parameters across both instances.

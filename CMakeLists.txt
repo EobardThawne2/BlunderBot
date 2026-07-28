@@ -45,7 +45,9 @@ find_package(Threads REQUIRED)
 target_link_libraries(BlunderBot PRIVATE Threads::Threads)
 
 # Copy the NNUE file to the build directory so the engine can find it
-add_custom_command(TARGET BlunderBot POST_BUILD
+add_custom_command(
+    TARGET BlunderBot POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/nn-62ef826d1a6d.nnue"
-        $<TARGET_FILE_DIR:BlunderBot>)
+        "${CMAKE_SOURCE_DIR}/Blunderbot.nnue"
+        "${CMAKE_BINARY_DIR}/Blunderbot.nnue"
+)

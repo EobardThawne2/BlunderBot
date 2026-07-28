@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 
     init_all();
     TT.resize(32);
-    nnue_init("nn-62ef826d1a6d.nnue");
+    nnue_init("Blunderbot.nnue");
 
     if (argc > 1) {
         std::string arg = argv[1];

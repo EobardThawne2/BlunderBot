@@ -63,7 +63,7 @@ jobs:
       shell: bash
       working-directory: build
       run: |
-        cp ../nn-62ef826d1a6d.nnue .
+        cp ../Blunderbot.nnue .
         if [ "$RUNNER_OS" == "Windows" ]; then
           if [ -f "Release/BlunderBot.exe" ]; then
             cp Release/BlunderBot.exe .
@@ -72,13 +72,13 @@ jobs:
             echo "Error: BlunderBot.exe not found!"
             exit 1
           fi
-          7z a BlunderBot-${{ matrix.os }}.zip BlunderBot.exe nn-62ef826d1a6d.nnue blunderbot_book.bin
+          7z a BlunderBot-${{ matrix.os }}.zip BlunderBot.exe Blunderbot.nnue blunderbot_book.bin
         else
           if [ ! -f "BlunderBot" ]; then
             echo "Error: BlunderBot not found!"
             exit 1
           fi
-          zip -r BlunderBot-${{ matrix.os }}.zip BlunderBot nn-62ef826d1a6d.nnue blunderbot_book.bin
+          zip -r BlunderBot-${{ matrix.os }}.zip BlunderBot Blunderbot.nnue blunderbot_book.bin
         fi
 
     - name: Release
