@@ -75,8 +75,8 @@ jobs:
         # Play games using SPRT (Sequential Probability Ratio Test)
         # elo0=0, elo1=10: fails if PR is worse, passes if equal or better
         cutechess-cli \
-          -engine cmd=pr-branch/BlunderBot name="PR-Version (${{ matrix.name }})" ${{ matrix.options }} \
-          -engine cmd=main-branch/BlunderBot name=Main-Version ${{ matrix.options }} \
+          -engine cmd=BlunderBot dir=pr-branch name="PR-Version (${{ matrix.name }})" ${{ matrix.options }} \
+          -engine cmd=BlunderBot dir=main-branch name=Main-Version ${{ matrix.options }} \
           -each tc=0:10+0.1 option.Threads=1 \
           -rounds 250 -games 2 -repeat \
           -sprt elo0=-10 elo1=0 alpha=0.05 beta=0.05 \
