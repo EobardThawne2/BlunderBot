@@ -60,25 +60,8 @@ int evaluate(const Board &board) {
     pieces[idx] = 0;
     squares[idx] = 0;
 
-    // Calculate Game Phase
-    // Knights = 1, Bishops = 1, Rooks = 2, Queens = 4 (Total = 24 max)
-    int phase = 0;
-    phase += 1 * Utils::count_bits(board.piece_bb[KNIGHT]);
-    phase += 1 * Utils::count_bits(board.piece_bb[BISHOP]);
-    phase += 2 * Utils::count_bits(board.piece_bb[ROOK]);
-    phase += 4 * Utils::count_bits(board.piece_bb[QUEEN]);
-
-    // Clamp phase between 0 (Endgame) and 24 (Opening)
-    if (phase > 24) phase = 24;
-
     // nnue_evaluate returns the score relative to the side to move.
-    int raw_score = nnue_evaluate(board.side_to_move, pieces, squares);
-
-    // Dynamic Endgame Aggression (Phase-based weight shifting)
-    // multiplier = 1.0 at phase 24 (opening)
-    // multiplier = 1.3 at phase 0 (endgame)
-    double scale = 1.3 - (0.3 * phase / 24.0);
-    int score = (int)(raw_score * scale);
+    int score = nnue_evaluate(board.side_to_move, pieces, squares);
 
     // Prevent the score from exceeding mate bounds
     if (score > 30000) score = 30000;

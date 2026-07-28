@@ -14,10 +14,12 @@ The foundational data structure of BlunderBot is the 64-bit unsigned integer (`u
 - `__builtin_popcountll`: Used to count the number of set bits (e.g., evaluating material count or mobility).
 - `__builtin_ctzll`: Used to find the index of the Least Significant 1-Bit (LS1B), enabling rapid serialization of bitboards into discrete piece coordinate lists.
 
+Bitwise operations (AND, OR, XOR, NOT, and shifts) provide a zero-branching methodology for evaluating board states. For instance, determining if a square is occupied by a White Pawn simply requires checking if `(board.piece_bb[PAWN] & board.color_bb[WHITE]) & (1ULL << square)` evaluates to a non-zero value.
+
 ### 1.2 Move Generation
-BlunderBot utilizes a staged, pseudo-legal move generator to maximize node throughput. 
-- **Leaper Pieces (Knights, Kings):** Moves are generated using pre-calculated attack masks indexed by the piece's square.
-- **Pawn Mechanics:** Pawn pushes, double pushes, and attacks (including En Passant) are generated via bitwise shifts, heavily optimizing the most common moves on the board.
+BlunderBot utilizes a staged, pseudo-legal move generator to maximize node throughput. The generator distinguishes between capturing and non-capturing moves, which is vital for search routines like Quiescence Search where only forcing moves are expanded.
+- **Leaper Pieces (Knights, Kings):** Moves are generated using pre-calculated attack masks indexed by the piece's square. The masks are generated recursively during the engine initialization phase (`init_all()`).
+- **Pawn Mechanics:** Pawn pushes, double pushes, and attacks (including En Passant) are generated via bitwise shifts, heavily optimizing the most common moves on the board. The engine strictly avoids conditional branching here.
 - **Sliding Pieces (Rooks, Bishops, Queens):** BlunderBot leverages **Magic Bitboards**. By hashing the occupancy of the relevant blocker squares (multiplying by a pre-computed "magic number" and right-shifting), sliding piece attacks are resolved via a direct array lookup in O(1) constant time. This strictly eliminates the computationally expensive loop-based ray casting historically used in older engines.
 - **Legality Checking:** Moves are generated pseudo-legally (allowing moves that might leave the King in check). Legality is strictly verified immediately before the move is executed in the search tree, preventing the generation overhead for branches that are heavily pruned.
 
@@ -56,6 +58,7 @@ To achieve extreme depth within modern time controls, BlunderBot aggressively pr
 - **Futility Pruning:** If a node is near the horizon (Depth <= 2), and the static evaluation plus a mathematical margin falls significantly below alpha, the engine assumes recovery is impossible and prunes the node.
 - **Reverse Futility Pruning (Static NMP):** Evaluated at the pre-node expansion phase. If the static evaluation exceeds beta by a massive margin, the node returns immediately without generating moves.
 - **ProbCut:** Performs a highly aggressive, shallow search (typically depth - 4) with a significant beta margin. If this shallow search causes a cutoff, the main search is bypassed entirely.
+- **Delta Pruning:** Used exclusively within the Quiescence Search algorithm. If the current static evaluation plus a significant material margin (e.g., the value of a Queen) remains beneath the alpha bound, the branch is terminated.
 
 ### 2.4 Search Extensions
 - **Singular Extensions:** When the Hash Move score exceeds the score of all alternative moves by a significant, pre-defined margin, it is classified as "singular" (forced). BlunderBot extends the search depth of singular moves by 1 ply, ensuring absolute tactical accuracy in forcing lines and mitigating the horizon effect.
@@ -65,20 +68,14 @@ To achieve extreme depth within modern time controls, BlunderBot aggressively pr
 
 ## 3. Evaluation and Neural Architecture
 
-BlunderBot abandons traditional Hand-Crafted Evaluation (HCE) entirely, relying strictly on an Efficiently Updatable Neural Network (NNUE) for static positional assessment.
+BlunderBot abandons traditional Hand-Crafted Evaluation (HCE) entirely, relying strictly on an Efficiently Updatable Neural Network (NNUE) for static positional assessment. NNUE evaluates positions intrinsically, providing superior positional understanding regarding king safety, pawn structure, and piece coordination.
 
 ### 3.1 Network Topology (HalfKP)
 The engine utilizes a custom `Blunderbot.nnue` weights file processed natively on the CPU via the `nnue-probe` library. 
-- **Input Layer:** The architecture employs a Half-King-Piece (HalfKP) mapping. The input vector consists of 41,024 discrete features, representing the relationship between the active King's square and every other piece on the board.
-- **Hidden Layers:** The network processes these features through highly optimized, densely connected hidden layers using clipped ReLU activations, dynamically calculating non-linear positional heuristics (e.g., King safety, pawn structure, piece activity) that are mathematically impossible to express in HCE.
-- **Incremental Updates:** Rather than recalculating the entire 41,024-feature input array from scratch at every leaf node, BlunderBot incrementally updates the network's accumulator during `make_move` and `unmake_move` operations. A single piece movement only updates the specific neural weights associated with the "from" and "to" squares, allowing NNUE to rival the speed of primitive HCE calculations.
-
-### 3.2 Game-Phase Shifting (The Three-Brain Model)
-To account for the wildly varying strategic priorities between the opening, middlegame, and endgame, BlunderBot implements a dynamic Game-Phase Shifting scalar.
-- The absolute game phase is calculated mathematically by summarizing the non-pawn material (or bit counts) currently active on the board.
-- The raw NNUE evaluation integer is then multiplied by a phase-dependent scalar. 
-- During high-material phases (opening/middlegame), the multiplier rests at 1.0. As material is depleted and the game transitions into an endgame scenario, the multiplier scales asymptotically up to 1.3. 
-- This forces the search algorithm to mathematically prioritize precision and absolute evaluation differences in endgames, where small advantages define the outcome.
+- **Input Layer:** The architecture employs a Half-King-Piece (HalfKP) mapping. The input vector consists of 41,024 discrete features, representing the relationship between the active King's square and every other piece on the board. The model considers the position relative to the side to move.
+- **Hidden Layers:** The network processes these features through highly optimized, densely connected hidden layers using clipped ReLU activations, dynamically calculating non-linear positional heuristics that are mathematically impossible to express in HCE.
+- **Incremental Updates:** Rather than recalculating the entire 41,024-feature input array from scratch at every leaf node, BlunderBot incrementally updates the network's accumulator during `make_move` and `unmake_move` operations. A single piece movement only updates the specific neural weights associated with the "from" and "to" squares, allowing NNUE to rival the speed of primitive HCE calculations. 
+- **Scale Invariance:** NNUE evaluations inherently encapsulate positional heuristics across all game phases (Opening, Middlegame, Endgame). Unlike legacy HCE models that require artificial scaling based on non-pawn material counts, NNUE evaluates endgame theoretical probabilities directly, preventing the structural distortions that arise from arbitrary programmatic phase-shifting.
 
 ---
 
@@ -87,15 +84,16 @@ To account for the wildly varying strategic priorities between the opening, midd
 BlunderBot natively supports the binary PolyGlot `.bin` opening book format. 
 - The repository includes a standalone `make_book` C++ executable that mathematically compiles raw PGN strings into a highly compressed, Zobrist-indexed binary format during the CMake build sequence.
 - During the root search phase, if the current Zobrist hash matches an entry in the compiled `blunderbot_book.bin`, the engine immediately plays the pre-calculated theoretical move, completely bypassing the Negamax search tree and conserving computational resources for out-of-book middlegame positions.
+- The engine uses deterministic hashing to traverse the Polyglot book, ensuring the theoretical line is selected correctly.
 
 ---
 
 ## 5. Continuous Integration (CI/CD) and Automated Testing
 
-Strict statistical rigor governs the BlunderBot codebase. A fully automated GitHub Actions CI/CD pipeline validates every commit to the repository.
+Strict statistical rigor governs the BlunderBot codebase. A fully automated GitHub Actions CI/CD pipeline validates every commit to the repository. The continuous testing protocol ensures no regressions are merged into the main branch.
 
 ### 5.1 Automated SPRT Regression
 - Every pull request initiates an ablation test matrix pitting the modified `pr-branch` executable against the stable `main` baseline.
 - `c-chess-cli` acts as the deterministic match runner, enforcing strict time controls and zero-variance concurrency.
 - Matches are mathematically evaluated using the Sequential Probability Ratio Test (SPRT). The testing parameters are defined as `elo0=-10` and `elo1=0` with error bounds `alpha=0.05` and `beta=0.05`. 
-- For code changes to be merged, they must mathematically demonstrate equal or greater Elo strength (i.e., failing the null hypothesis that the new engine is worse) against the identical baseline constraint. Heuristic ablation tests enforce symmetry by selectively disabling UCI configuration parameters across both instances.
+- For code changes to be merged, they must mathematically demonstrate equal or greater Elo strength (i.e., failing the null hypothesis that the new engine is worse) against the identical baseline constraint. Heuristic ablation tests enforce symmetry by selectively disabling UCI configuration parameters across both instances. This isolating methodology prevents regressions across disparate features like SEE, Singular Extensions, Countermoves, and ProbCut.
