@@ -1,6 +1,6 @@
 # BlunderBot Chess Engine Architecture
 
-BlunderBot is an advanced, high-performance, Universal Chess Interface (UCI) compliant chess engine written in C++20. Engineered for strict modularity, raw execution speed, and adherence to modern chess programming paradigms, it integrates state-of-the-art heuristic search algorithms and a custom Efficiently Updatable Neural Network (NNUE) evaluation architecture.
+BlunderBot is an advanced, high-performance, Universal Chess Interface (UCI) compliant chess engine written in C++20. Engineered for strict modularity, raw execution speed, and adherence to modern chess programming paradigms, it integrates state-of-the-art heuristic search algorithms and a custom Efficiently Updatable Neural Network (NNUE) evaluation architecture. 
 
 To interact with the latest deployment of the BlunderBot engine, visit:
 https://blunderbot-l52n.onrender.com/
@@ -40,7 +40,7 @@ The Transposition Table is a highly optimized, lock-free hash map that caches se
 - **Bound Type:** Exact, Lower Bound (Beta cutoff), or Upper Bound (Alpha cutoff).
 - **Best Move:** The move that yielded the highest score.
 
-Before expanding a node, BlunderBot probes the TT. If a valid entry exists with a depth greater than or equal to the current required depth, the search immediately returns the cached score, circumventing the entire subtree calculation.
+Before expanding a node, BlunderBot probes the TT. If a valid entry exists with a depth greater than or equal to the current required depth, the search immediately returns the cached score, circumventing the entire subtree calculation. The replacement scheme prioritizes nodes with greater depth or exact scores over shallower alpha/beta bound nodes.
 
 ### 2.2 Move Ordering
 The efficiency of Alpha-Beta pruning scales exponentially with the quality of move ordering. BlunderBot enforces a strict deterministic ordering schema to force beta-cutoffs as early as possible:
@@ -74,8 +74,11 @@ BlunderBot abandons traditional Hand-Crafted Evaluation (HCE) entirely, relying 
 The engine utilizes a custom `Blunderbot.nnue` weights file processed natively on the CPU via the `nnue-probe` library. 
 - **Input Layer:** The architecture employs a Half-King-Piece (HalfKP) mapping. The input vector consists of 41,024 discrete features, representing the relationship between the active King's square and every other piece on the board. The model considers the position relative to the side to move.
 - **Hidden Layers:** The network processes these features through highly optimized, densely connected hidden layers using clipped ReLU activations, dynamically calculating non-linear positional heuristics that are mathematically impossible to express in HCE.
-- **Incremental Updates:** Rather than recalculating the entire 41,024-feature input array from scratch at every leaf node, BlunderBot incrementally updates the network's accumulator during `make_move` and `unmake_move` operations. A single piece movement only updates the specific neural weights associated with the "from" and "to" squares, allowing NNUE to rival the speed of primitive HCE calculations. 
+- **Incremental Updates:** Rather than recalculating the entire 41,024-feature input array from scratch at every leaf node, BlunderBot incrementally updates the network's accumulator during `make_move` and `unmake_move` operations. A single piece movement only updates the specific neural weights associated with the "from" and "to" squares, allowing NNUE to rival the speed of primitive HCE calculations.
 - **Scale Invariance:** NNUE evaluations inherently encapsulate positional heuristics across all game phases (Opening, Middlegame, Endgame). Unlike legacy HCE models that require artificial scaling based on non-pawn material counts, NNUE evaluates endgame theoretical probabilities directly, preventing the structural distortions that arise from arbitrary programmatic phase-shifting.
+
+### 3.2 Hardware Vectorization
+To maximize the throughput of the neural network during inference, BlunderBot uses Advanced Vector Extensions (AVX2 and AVX-512) where available. The integer multiplication and clipped ReLU operations within the hidden layers are executed via SIMD (Single Instruction, Multiple Data) intrinsics, dramatically reducing the cycles per node evaluated during Quiescence Search.
 
 ---
 
@@ -84,16 +87,35 @@ The engine utilizes a custom `Blunderbot.nnue` weights file processed natively o
 BlunderBot natively supports the binary PolyGlot `.bin` opening book format. 
 - The repository includes a standalone `make_book` C++ executable that mathematically compiles raw PGN strings into a highly compressed, Zobrist-indexed binary format during the CMake build sequence.
 - During the root search phase, if the current Zobrist hash matches an entry in the compiled `blunderbot_book.bin`, the engine immediately plays the pre-calculated theoretical move, completely bypassing the Negamax search tree and conserving computational resources for out-of-book middlegame positions.
-- The engine uses deterministic hashing to traverse the Polyglot book, ensuring the theoretical line is selected correctly.
+- The engine uses deterministic hashing to traverse the Polyglot book, ensuring the theoretical line is selected correctly. Book mismatches are gracefully handled by falling back to the iterative deepening search dynamically.
 
 ---
 
-## 5. Continuous Integration (CI/CD) and Automated Testing
+## 5. UCI Protocol Implementation
+
+BlunderBot is designed to interface with modern graphical user interfaces (GUIs) such as CuteChess, Arena, and En Croissant through a strict implementation of the Universal Chess Interface (UCI).
+
+### 5.1 Communication Loop
+The engine runs a continuously polling standard I/O thread. It processes commands asynchronously, allowing the GUI to interrupt deeply nested searches (e.g., via the `stop` command) immediately. 
+- `position fen <FEN> moves <M1> <M2>`: Sets the internal board representation dynamically. 
+- `go wtime <T1> btime <T2>`: Triggers the main search algorithm. The time management heuristic mathematically allocates processing time per move based on total remaining time, increment, and algorithmic scaling factors. 
+
+### 5.2 Time Management
+Time allocation is dynamic. For standard play, BlunderBot targets approximately 1/25th of its remaining time per move, augmented by the increment. 
+- **Soft Bounds:** The engine will stop iterative deepening if it determines that finishing the next depth iteration will exhaust the soft time limit. 
+- **Hard Bounds:** The engine forcibly aborts the current search iteration, returning the best move found from the previous depth, if the hard time limit is breached, guaranteeing zero time forfeits under strict tournament conditions.
+
+---
+
+## 6. Continuous Integration (CI/CD) and Automated Testing
 
 Strict statistical rigor governs the BlunderBot codebase. A fully automated GitHub Actions CI/CD pipeline validates every commit to the repository. The continuous testing protocol ensures no regressions are merged into the main branch.
 
-### 5.1 Automated SPRT Regression
+### 6.1 Automated SPRT Regression
 - Every pull request initiates an ablation test matrix pitting the modified `pr-branch` executable against the stable `main` baseline.
 - `c-chess-cli` acts as the deterministic match runner, enforcing strict time controls and zero-variance concurrency.
 - Matches are mathematically evaluated using the Sequential Probability Ratio Test (SPRT). The testing parameters are defined as `elo0=-10` and `elo1=0` with error bounds `alpha=0.05` and `beta=0.05`. 
 - For code changes to be merged, they must mathematically demonstrate equal or greater Elo strength (i.e., failing the null hypothesis that the new engine is worse) against the identical baseline constraint. Heuristic ablation tests enforce symmetry by selectively disabling UCI configuration parameters across both instances. This isolating methodology prevents regressions across disparate features like SEE, Singular Extensions, Countermoves, and ProbCut.
+
+### 6.2 Data Generation and Supervised Learning
+The engine utilizes a self-play data generation pipeline. The CI environment can spawn thousands of concurrent games, dumping positional evaluations to a serialized dataset. This dataset is periodically used to re-train the HalfKP NNUE architecture using a modified PyTorch environment, producing iteratively stronger weights files without requiring modifications to the C++ heuristic structure.
