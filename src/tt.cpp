@@ -44,9 +44,7 @@ void TranspositionTable::resize(int mb) {
 }
 
 void TranspositionTable::clear() {
-    for (uint64_t i = 0; i <= size_mask; i++) {
-        table[i].data.store(0, std::memory_order_relaxed);
-    }
+    for (uint64_t i = 0; i <= size_mask; i++) { table[i].data.store(0, std::memory_order_relaxed); }
 }
 
 void TranspositionTable::store(uint64_t key, int depth, int score, int flag, Move best_move) {

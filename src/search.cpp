@@ -398,10 +398,9 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, int th
                 // Fail High: the score was better than expected, widen beta
                 beta = 50000;
                 // Move best_move_current to the front of moves for the re-search
-                auto it = std::find_if(moves.begin(), moves.end(), [&](const Move& m) { return m.move == best_move_current.move; });
-                if (it != moves.end()) {
-                    std::rotate(moves.begin(), it, it + 1);
-                }
+                auto it = std::find_if(moves.begin(), moves.end(),
+                                       [&](const Move &m) { return m.move == best_move_current.move; });
+                if (it != moves.end()) { std::rotate(moves.begin(), it, it + 1); }
             } else {
                 // Score falls exactly inside the window, it's exact!
                 break;

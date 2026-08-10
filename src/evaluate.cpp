@@ -60,14 +60,14 @@ int evaluate(const Board &board) {
     pieces[idx] = 0;
     squares[idx] = 0;
 
-    Board* non_const_board = const_cast<Board*>(&board);
-    NNUEdata* current_nnue = &non_const_board->nnue_state[board.history_ply];
-    NNUEdata* nnue_data[3] = { current_nnue, nullptr, nullptr };
-    
+    Board *non_const_board = const_cast<Board *>(&board);
+    NNUEdata *current_nnue = &non_const_board->nnue_state[board.history_ply];
+    NNUEdata *nnue_data[3] = {current_nnue, nullptr, nullptr};
+
     if (board.history_ply > 0 && !board.history[board.history_ply - 1].force_nnue_recompute) {
         nnue_data[1] = &non_const_board->nnue_state[board.history_ply - 1];
     }
-    
+
     int score = nnue_evaluate_incremental(board.side_to_move, pieces, squares, nnue_data);
 
     // Prevent the score from exceeding mate bounds
