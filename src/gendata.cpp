@@ -8,6 +8,7 @@
 #include <vector>
 #include <random>
 #include <sstream>
+#include <memory>
 
 struct GamePosition {
     std::string fen;
@@ -25,7 +26,8 @@ void generate_data(int num_games, int depth) {
     std::cout << "Starting data generation: " << num_games << " games at depth " << depth << std::endl;
 
     for (int g = 0; g < num_games; g++) {
-        Board board;
+        auto board_ptr = std::make_unique<Board>();
+        Board &board = *board_ptr;
         board.parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         TT.clear();
 

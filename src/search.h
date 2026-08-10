@@ -22,4 +22,4 @@ struct SearchInfo {
     Move countermoves[64][64];    // [prev_move.from()][prev_move.to()]
 };
 
-Move search(Board board, int depth_limit, long long time_limit_ms);
+Move search(const Board &board, int depth_limit, long long time_limit_ms);

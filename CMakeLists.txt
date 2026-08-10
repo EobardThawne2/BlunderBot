@@ -8,7 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_compile_options(/O2 /GL /W4)
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -mavx2 -mbmi2 -mpopcnt -msse4.1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mbmi2 -mpopcnt -msse4.1")
+    endif()
 endif()
 
 set(SOURCES

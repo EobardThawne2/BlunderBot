@@ -7,6 +7,7 @@
 #include "nnue.h"
 #include <iostream>
 #include <string>
+#include <memory>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -16,7 +17,8 @@ bool is_tui = false;
 
 void tui_loop() {
     is_tui = true;
-    Board board;
+    auto board_ptr = std::make_unique<Board>();
+    Board &board = *board_ptr;
     board.parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     std::string line;
 

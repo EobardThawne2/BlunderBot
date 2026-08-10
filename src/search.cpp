@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 #include <cmath>
+#include <memory>
 
 std::atomic<bool> global_stop{false};
 bool use_see = true;
@@ -321,7 +322,11 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
 
 #include <random>
 
-Move search_worker(Board board, int depth_limit, long long time_limit_ms, int thread_id) {
+Move search_worker(const Board &initial_board, int depth_limit, long long time_limit_ms, int thread_id) {
+    auto board_ptr = std::make_unique<Board>(initial_board);
+    Board &board = *board_ptr;
+
+    SearchInfo info = {};
     info.nodes = 0;
     info.start_time = get_time_ms();
     info.time_limit = time_limit_ms;
@@ -423,7 +428,7 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, int th
     return best_move_overall;
 }
 
-Move search(Board board, int depth_limit, long long time_limit_ms) {
+Move search(const Board &board, int depth_limit, long long time_limit_ms) {
     global_stop = false;
 
     int active_threads = num_threads > 0 ? num_threads : 1;
@@ -432,7 +437,7 @@ Move search(Board board, int depth_limit, long long time_limit_ms) {
     // Spawn helper threads (Lazy SMP)
     for (int i = 1; i < active_threads; i++) {
         workers.emplace_back(
-            [board, depth_limit, time_limit_ms, i]() { search_worker(board, depth_limit, time_limit_ms, i); });
+            [&board, depth_limit, time_limit_ms, i]() { search_worker(board, depth_limit, time_limit_ms, i); });
     }
 
     // Main thread does the exact same search, but prints UCI info

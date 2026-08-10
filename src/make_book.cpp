@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <memory>
 #include <cstdint>
 
 struct BookEntry {
@@ -41,7 +42,8 @@ int main(int argc, char *argv[]) {
     while (std::getline(infile, line)) {
         if (line.empty() || line[0] == '#') continue;
 
-        Board board;
+        auto board_ptr = std::make_unique<Board>();
+        Board &board = *board_ptr;
         board.parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
         std::istringstream ss(line);

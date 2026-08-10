@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <memory>
 
 void parse_position(Board &board, std::istringstream &ss) {
     std::string token;
@@ -90,7 +91,8 @@ int num_threads = std::thread::hardware_concurrency() > 0 ? std::thread::hardwar
 void uci_loop() {
     OpeningBook::load("blunderbot_book.bin");
 
-    Board board;
+    auto board_ptr = std::make_unique<Board>();
+    Board &board = *board_ptr;
     board.parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     std::string line;
