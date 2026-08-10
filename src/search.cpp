@@ -319,7 +319,9 @@ int negamax(Board &board, int depth, int alpha, int beta, bool is_null = false, 
     return best_score;
 }
 
-Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool is_main_thread) {
+#include <random>
+
+Move search_worker(Board board, int depth_limit, long long time_limit_ms, int thread_id) {
     info.nodes = 0;
     info.start_time = get_time_ms();
     info.time_limit = time_limit_ms;
@@ -339,6 +341,11 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
 
         sort_moves(board, moves, hash_move, depth, Move());
 
+        if (thread_id > 0 && moves.size() > 2) {
+            std::mt19937 rng(thread_id ^ depth);
+            std::shuffle(moves.begin() + 1, moves.end(), rng);
+        }
+
         Move best_move_current = moves[0];
         int best_score = -50000;
 
@@ -353,6 +360,7 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
         while (true) {
             best_score = -50000;
             int current_alpha = alpha; // Keep track of the starting alpha for fail-low checks
+            int search_alpha = alpha;
 
             int moves_searched = 0;
             for (Move m : moves) {
@@ -360,11 +368,11 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
                 int score;
 
                 if (moves_searched == 0) {
-                    score = -negamax(board, depth - 1, -beta, -alpha, false, Move(), m);
+                    score = -negamax(board, depth - 1, -beta, -search_alpha, false, Move(), m);
                 } else {
-                    score = -negamax(board, depth - 1, -alpha - 1, -alpha, false, Move(), m);
-                    if (score > alpha && score < beta) {
-                        score = -negamax(board, depth - 1, -beta, -alpha, false, Move(), m);
+                    score = -negamax(board, depth - 1, -search_alpha - 1, -search_alpha, false, Move(), m);
+                    if (score > search_alpha && score < beta) {
+                        score = -negamax(board, depth - 1, -beta, -search_alpha, false, Move(), m);
                     }
                 }
 
@@ -377,7 +385,7 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
                     best_score = score;
                     best_move_current = m;
                 }
-                if (score > alpha) { alpha = score; }
+                if (score > search_alpha) { search_alpha = score; }
             }
 
             if (global_stop) break;
@@ -389,6 +397,11 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
             } else if (best_score >= beta) {
                 // Fail High: the score was better than expected, widen beta
                 beta = 50000;
+                // Move best_move_current to the front of moves for the re-search
+                auto it = std::find_if(moves.begin(), moves.end(), [&](const Move& m) { return m.move == best_move_current.move; });
+                if (it != moves.end()) {
+                    std::rotate(moves.begin(), it, it + 1);
+                }
             } else {
                 // Score falls exactly inside the window, it's exact!
                 break;
@@ -400,7 +413,7 @@ Move search_worker(Board board, int depth_limit, long long time_limit_ms, bool i
         previous_score = best_score;
         best_move_overall = best_move_current;
 
-        if (is_main_thread) {
+        if (thread_id == 0) {
             extern bool is_tui;
             if (!is_tui) {
                 std::cout << "info depth " << depth << " score cp " << best_score << " nodes " << info.nodes << " pv "
@@ -420,11 +433,11 @@ Move search(Board board, int depth_limit, long long time_limit_ms) {
     // Spawn helper threads (Lazy SMP)
     for (int i = 1; i < active_threads; i++) {
         workers.emplace_back(
-            [board, depth_limit, time_limit_ms]() { search_worker(board, depth_limit, time_limit_ms, false); });
+            [board, depth_limit, time_limit_ms, i]() { search_worker(board, depth_limit, time_limit_ms, i); });
     }
 
     // Main thread does the exact same search, but prints UCI info
-    Move best = search_worker(board, depth_limit, time_limit_ms, true);
+    Move best = search_worker(board, depth_limit, time_limit_ms, 0);
 
     // Stop all background threads once the main thread finishes
     global_stop = true;

@@ -4,17 +4,19 @@
 TranspositionTable TT;
 
 // Helper functions for packing/unpacking TT data
-static uint64_t pack_data(int depth, int score, int flag, Move best_move) {
+static uint64_t pack_data(uint64_t key, int depth, int score, int flag, Move best_move) {
+    uint64_t k = (key >> 48) & 0xFFFFULL;
     uint64_t d = ((uint64_t)depth & 0xFFULL);
-    uint64_t s = ((uint64_t)(uint16_t)(int16_t)score & 0xFFFFULL);
     uint64_t f = ((uint64_t)flag & 0x3ULL);
+    uint64_t s = ((uint64_t)(uint16_t)(int16_t)score & 0xFFFFULL);
     uint64_t m = ((uint64_t)best_move.move & 0xFFFFULL);
-    return (d << 48) | (f << 40) | (s << 16) | m;
+    return (k << 48) | (d << 40) | (f << 32) | (s << 16) | m;
 }
 
-static void unpack_data(uint64_t data, int &depth, int &score, int &flag, Move &best_move) {
-    depth = (data >> 48) & 0xFFULL;
-    flag = (data >> 40) & 0x3ULL;
+static void unpack_data(uint64_t data, uint64_t &key_sig, int &depth, int &score, int &flag, Move &best_move) {
+    key_sig = (data >> 48) & 0xFFFFULL;
+    depth = (data >> 40) & 0xFFULL;
+    flag = (data >> 32) & 0x3ULL;
     score = (int)(int16_t)((data >> 16) & 0xFFFFULL);
     best_move = Move(data & 0xFFFFULL);
 }
@@ -43,35 +45,27 @@ void TranspositionTable::resize(int mb) {
 
 void TranspositionTable::clear() {
     for (uint64_t i = 0; i <= size_mask; i++) {
-        table[i].key.store(0, std::memory_order_relaxed);
         table[i].data.store(0, std::memory_order_relaxed);
     }
 }
 
 void TranspositionTable::store(uint64_t key, int depth, int score, int flag, Move best_move) {
     int index = key & size_mask;
-    uint64_t packed = pack_data(depth, score, flag, best_move);
-    uint64_t xor_data = packed ^ key;
-
-    table[index].data.store(xor_data, std::memory_order_relaxed);
-    table[index].key.store(key, std::memory_order_release);
+    uint64_t packed = pack_data(key, depth, score, flag, best_move);
+    table[index].data.store(packed, std::memory_order_relaxed);
 }
 
 bool TranspositionTable::probe(uint64_t key, int depth, int alpha, int beta, int &score, Move &best_move) {
     int index = key & size_mask;
-
-    uint64_t stored_key = table[index].key.load(std::memory_order_acquire);
     uint64_t stored_data = table[index].data.load(std::memory_order_relaxed);
 
-    if (stored_key == key) {
-        uint64_t unpacked = stored_data ^ key;
+    if (stored_data == 0) return false;
 
-        int entry_depth, entry_flag;
-        unpack_data(unpacked, entry_depth, score, entry_flag, best_move);
+    uint64_t key_sig;
+    int entry_depth, entry_flag;
+    unpack_data(stored_data, key_sig, entry_depth, score, entry_flag, best_move);
 
-        // Basic sanity check against torn reads
-        if (entry_flag < TT_EXACT || entry_flag > TT_BETA) return false;
-
+    if (key_sig == ((key >> 48) & 0xFFFFULL)) {
         if (entry_depth >= depth) {
             if (entry_flag == TT_EXACT) { return true; }
             if (entry_flag == TT_ALPHA && score <= alpha) {

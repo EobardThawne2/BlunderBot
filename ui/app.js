@@ -190,7 +190,7 @@ function showPromotionModal(source, target, color) {
     const pieces = ['q', 'r', 'b', 'n'];
     pieces.forEach(p => {
         const img = document.createElement('img');
-        img.src = `https://chessboardjs.com/img/chesspieces/wikipedia/${color}${p}.png`;
+        img.src = `https://chessboardjs.com/img/chesspieces/wikipedia/${color}${p.toUpperCase()}.png`;
         img.className = 'promo-piece';
         img.dataset.piece = p;
         img.addEventListener('click', () => {

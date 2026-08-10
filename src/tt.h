@@ -10,7 +10,6 @@ const int TT_ALPHA = 1;
 const int TT_BETA = 2;
 
 struct TTEntry {
-    std::atomic<uint64_t> key;
     std::atomic<uint64_t> data;
 };
 

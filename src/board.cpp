@@ -359,7 +359,24 @@ void Board::make_move(Move move) {
             }
         }
     }
-    if (history_ply < 2048) { history[history_ply].captured_piece = captured_piece; }
+    if (history_ply < 2048) { 
+        history[history_ply].captured_piece = captured_piece; 
+        
+        bool force_nnue = false;
+        NNUEdata* current_nnue = &nnue_state[history_ply + 1];
+        current_nnue->accumulator.computedAccumulation = 0;
+        
+        if (move.is_castling() || move.is_en_passant() || move.promoted() != PIECE_NONE || move.is_capture()) {
+            force_nnue = true;
+        } else {
+            int nnue_moved = (moved_piece == KING ? 1 : moved_piece == QUEEN ? 2 : moved_piece == ROOK ? 3 : moved_piece == BISHOP ? 4 : moved_piece == KNIGHT ? 5 : 6) + (side_to_move == BLACK ? 6 : 0);
+            current_nnue->dirtyPiece.dirtyNum = 1;
+            current_nnue->dirtyPiece.pc[0] = nnue_moved;
+            current_nnue->dirtyPiece.from[0] = from;
+            current_nnue->dirtyPiece.to[0] = to;
+        }
+        history[history_ply].force_nnue_recompute = force_nnue;
+    }
     history_ply++;
 
     Utils::clear_bit(piece_bb[moved_piece], from);
@@ -490,6 +507,11 @@ void Board::make_null_move() {
     history[history_ply].en_passant = en_passant;
     history[history_ply].half_move_clock = half_move_clock;
     history[history_ply].hash_key = hash_key;
+    
+    history[history_ply].force_nnue_recompute = false;
+    NNUEdata* current_nnue = &nnue_state[history_ply + 1];
+    current_nnue->accumulator.computedAccumulation = 0;
+    current_nnue->dirtyPiece.dirtyNum = 0;
 
     en_passant = SQ_NONE;
     if (side_to_move == BLACK) full_move_number++;

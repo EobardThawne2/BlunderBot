@@ -4,12 +4,14 @@
 #include "bitboard.h"
 #include "utils.h"
 #include "move.h"
+#include "nnue.h"
 
 struct BoardState {
     int castling_rights;
     int en_passant;
     int half_move_clock;
     int captured_piece;
+    bool force_nnue_recompute;
     uint64_t hash_key;
 };
 
@@ -26,6 +28,7 @@ class Board {
     uint64_t hash_key;
 
     BoardState history[2048];
+    NNUEdata nnue_state[2048];
     int history_ply;
 
     Board();
