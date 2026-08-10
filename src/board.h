@@ -1,6 +1,11 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <cstdlib>
+#include <new>
+#if defined(_WIN32) || defined(_MSC_VER)
+#include <malloc.h>
+#endif
 #include "bitboard.h"
 #include "utils.h"
 #include "move.h"
@@ -17,6 +22,26 @@ struct BoardState {
 
 class Board {
   public:
+    void *operator new(size_t size) {
+#if defined(_WIN32) || defined(_MSC_VER)
+        void *ptr = _aligned_malloc(size, 64);
+        if (!ptr) throw std::bad_alloc();
+        return ptr;
+#else
+        void *ptr = nullptr;
+        if (posix_memalign(&ptr, 64, size) != 0) throw std::bad_alloc();
+        return ptr;
+#endif
+    }
+
+    void operator delete(void *ptr) {
+#if defined(_WIN32) || defined(_MSC_VER)
+        _aligned_free(ptr);
+#else
+        free(ptr);
+#endif
+    }
+
     uint64_t piece_bb[6];
     uint64_t color_bb[2];
 
