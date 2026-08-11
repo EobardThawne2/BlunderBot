@@ -35,7 +35,7 @@ void OpeningBook::load(const std::string &filename) {
 
     if (file.read(reinterpret_cast<char *>(book_entries.data()), file_size)) {
         loaded = true;
-        std::cout << "info string Loaded custom opening book with " << num_entries << " positions.\n";
+        std::cerr << "info string Loaded custom opening book with " << num_entries << " positions.\n";
     } else {
         std::cerr << "info string Warning: Failed to read opening book.\n";
     }

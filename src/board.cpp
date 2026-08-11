@@ -240,7 +240,7 @@ void Board::print_board_tui() const {
     side_panel[1] = "Full-Move:  " + std::to_string(full_move_number);
 
     char hash_buf[32];
-    snprintf(hash_buf, sizeof(hash_buf), "Hash:       %I64x", (unsigned long long)hash_key);
+    snprintf(hash_buf, sizeof(hash_buf), "Hash:       %llx", (unsigned long long)hash_key);
     side_panel[0] = hash_buf;
 
     for (int rank = 7; rank >= 0; --rank) {

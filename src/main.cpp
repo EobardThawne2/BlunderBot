@@ -100,19 +100,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    std::cout << "BlunderBot - Type 'uci' for UCI mode or 'tui' for Terminal UI mode.\n";
-    std::string line;
-    if (std::getline(std::cin, line)) {
-        if (line == "tui" || line == "play") {
-            tui_loop();
-        } else {
-            // Pre-feed the line to UCI loop if it was "uci", or just run it anyway
-            if (line == "uci") {
-                std::cout << "id name BlunderBot\n";
-                std::cout << "uciok\n";
-            }
-            uci_loop();
-        }
-    }
+    // Default to UCI mode without printing any non-UCI compliant text
+    uci_loop();
     return 0;
 }
