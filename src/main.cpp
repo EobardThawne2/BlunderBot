@@ -104,3 +104,5 @@ int main(int argc, char *argv[]) {
     uci_loop();
     return 0;
 }
+
+// Trigger CI run 2
