@@ -326,7 +326,6 @@ Move search_worker(const Board &initial_board, int depth_limit, long long time_l
     auto board_ptr = std::make_unique<Board>(initial_board);
     Board &board = *board_ptr;
 
-    SearchInfo info = {};
     info.nodes = 0;
     info.start_time = get_time_ms();
     info.time_limit = time_limit_ms;

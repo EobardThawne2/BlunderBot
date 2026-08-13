@@ -65,10 +65,8 @@ jobs:
 
     - name: Install Match Runner
       run: |
-        git clone https://github.com/lucasart/c-chess-cli.git
-        cd c-chess-cli
-        python3 make.py
-        sudo mv c-chess-cli /usr/local/bin/cutechess-cli
+        sudo apt-get update
+        sudo apt-get install -y cutechess-cli
 
     - name: Run Match - ${{ matrix.name }}
       run: |
