@@ -36,19 +36,19 @@ def main():
         else:
             print("LOS is >= 50%. Assuming the new code is acceptable.")
             sys.exit(0)
-    # Try parsing LLR from c-chess-cli
-    llrs = re.findall(r'SPRT:\s*LLR\s*=\s*([-.\d]+)', content)
-    if llrs:
-        last_llr = float(llrs[-1])
-        print(f"SPRT Inconclusive. Last LLR: {last_llr}")
-        if last_llr < 0.0:
-            print("LLR is negative. Assuming the new code is worse.")
-            sys.exit(1)
-        else:
-            print("LLR is >= 0. Assuming the new code is acceptable.")
+    # Try parsing final score if SPRT didn't converge
+    scores = re.findall(r'Score of .*?: (\d+) - (\d+) - (\d+)', content)
+    if scores:
+        w, l, d = map(int, scores[-1])
+        print(f"SPRT Inconclusive. Match hit game limit. Final Score: +{w} -{l} ={d}")
+        if w >= l:
+            print("Score is non-negative. Assuming the new code is acceptable.")
             sys.exit(0)
+        else:
+            print("Score is negative. Assuming the new code is worse.")
+            sys.exit(1)
             
-    print("Could not parse SPRT or LOS from output. The test may have crashed.")
+    print("Could not parse SPRT, LOS, or final score from output. The test may have crashed.")
     sys.exit(1)
 
 if __name__ == "__main__":
