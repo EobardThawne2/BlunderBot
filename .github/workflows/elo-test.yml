@@ -63,10 +63,45 @@ jobs:
         if [ -f build/make_book ]; then build/make_book data/openings.txt blunderbot_book.bin; fi
         mv build/BlunderBot BlunderBot
 
-    - name: Install Match Runner
+    # - name: Install Match Runner
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y cutechess
+
+    - name: Build Cute Chess from source
       run: |
         sudo apt-get update
-        sudo apt-get install -y cutechess
+        sudo apt-get install -y \
+          git \
+          build-essential \
+          cmake \
+          qt6-base-dev \
+          qt6-svg-dev \
+          qt6-base-dev-tools \
+          qt6-5compat-dev
+
+        git clone --depth 1 --branch v1.5.1 \
+          https://github.com/cutechess/cutechess.git \
+          "$RUNNER_TEMP/cutechess"
+
+        cmake -S "$RUNNER_TEMP/cutechess" \
+          -B "$RUNNER_TEMP/cutechess/build" \
+          -DCMAKE_BUILD_TYPE=Release
+
+        cmake --build "$RUNNER_TEMP/cutechess/build" \
+          --parallel 2
+
+        CUTECHESS_BIN=$(find "$RUNNER_TEMP/cutechess/build" \
+          -type f -name cutechess-cli -executable -print -quit)
+
+        if [ -z "$CUTECHESS_BIN" ]; then
+          echo "cutechess-cli executable not found!"
+          exit 1
+        fi
+
+        echo "$(dirname "$CUTECHESS_BIN")" >> "$GITHUB_PATH"
+        "$CUTECHESS_BIN" --version
+
 
     - name: Run Match - ${{ matrix.name }}
       run: |
